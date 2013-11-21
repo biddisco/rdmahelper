@@ -197,7 +197,7 @@ LDFLAGS += -L\$(utility_library_dir) -lbgutility -Wl,-rpath,\$(utility_library_d
 #ifndef BGQ_UTILITY_LOG_H_
 #define BGQ_UTILITY_LOG_H_
 
-#include <extlib/include/log4cxx/logger.h>
+#include <log4cxx/logger.h>
 
 #include <string>
 
