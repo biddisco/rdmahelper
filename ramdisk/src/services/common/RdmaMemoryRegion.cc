@@ -1,3 +1,5 @@
+
+
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
 /* This is an automatically generated copyright prolog.             */
@@ -207,12 +209,12 @@ RdmaMemoryRegion::allocateFromBgvrnicDevice(RdmaProtectionDomainPtr pd, size_t l
       return 0;
 }
 
-
 int
 RdmaMemoryRegion::release(void)
 {
    if (_region != NULL) {
       CIOSLOGRDMA_REQ(BGV_RDMA_RMV,_region,_frags,_fd);
+//      LOG_CIOS_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length " << length);
       void *buffer = getAddress();
       uint32_t length = getLength();
       ibv_dereg_mr(_region);
