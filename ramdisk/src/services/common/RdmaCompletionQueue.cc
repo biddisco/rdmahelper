@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
+#include <ramdisk/include/services/common/Cioslog.h>
 
 using namespace bgcios;
 
@@ -129,6 +130,10 @@ RdmaCompletionQueue::removeCompletions(int numEntries)
       LOG_ERROR_MSG(_tag << "error polling completion queue: " << bgcios::errorString(e.errcode()));
       throw e;
    }
+   for (int i=0;i<nc;i++){
+     CIOSLOGMSG_WC(BGV_WORK_CMP,_completions+i);
+   }
+//#define CIOSLOGMSG_WC(ID,wc) logMsgQpNum(ID,(struct ibv_wc *)wc)
    _numCompletions += nc;
    LOG_CIOS_TRACE_MSG(_tag << "removed " << nc << " work completions from completion queue, " << _numCompletions-_nextCompletion << " are pending");
    _totalCompletions += _numCompletions;
