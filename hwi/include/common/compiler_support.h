@@ -26,7 +26,11 @@
 #endif
 
 #ifndef __INLINE__
+#ifdef __llvm__
+#define __INLINE__ static inline
+#else
 #define __INLINE__ extern inline __attribute__((always_inline))
+#endif
 #endif
 
 
