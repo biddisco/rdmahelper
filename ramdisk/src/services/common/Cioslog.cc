@@ -30,12 +30,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
+#include <fcntl.h>
 
+#include <ramdisk/include/services/ServicesConstants.h>
 #include <ramdisk/include/services/MessageHeader.h>
-#include <ramdisk/include/services/SysioMessages.h>
-#include <ramdisk/include/services/JobctlMessages.h>
+//#include <ramdisk/include/services/SysioMessages.h>
+//#include <ramdisk/include/services/JobctlMessages.h>
 #include <ramdisk/include/services/StdioMessages.h>
-#include <ramdisk/include/services/IosctlMessages.h>
+//#include <ramdisk/include/services/IosctlMessages.h>
+#include <Log.h>
 
 #include <ramdisk/include/services/common/Cioslog.h>
 #include <stdio.h>
@@ -45,6 +48,8 @@
 #endif
 
 #include <infiniband/verbs.h>
+
+LOG_DECLARE_FILE( "cios.logging" );
 
 using namespace bgcios;
 
@@ -83,11 +88,14 @@ void printMsg(uint32_t ID, bgcios::MessageHeader *mh){
 #endif
 
 #ifdef __x86_64__
-void printMsg(uint32_t /*ID*/, bgcios::MessageHeader */*mh*/){
+#define LLUS long long unsigned int
+static uint64_t GetTimeBase() { return 0; }
+void printMsg(uint32_t ID, bgcios::MessageHeader *mh){
 // Don't do anything for x86.
+  printf("%s: type=%u rank=%u jobid=%llu sequenceId=%d length=%d timestamp=%llu\n", CIOS_FLIGHTLOG_FMT[ID],(int)mh->type,(int)mh->rank,(LLUS)mh->jobId, (int)mh->sequenceId,(int)mh->length,(LLUS)GetTimeBase());
 }
 
-static uint64_t GetTimeBase() { return 0; }
+#undef LLUS
 #endif
 
 
@@ -110,6 +118,13 @@ uint32_t logPostSend(uint32_t ID, struct ibv_send_wr& send_wr,int err){
    if (err){
       entry->id = BGV_POST_ERR;
       entry->ci.BGV_recv[1]=(uint32_t)err;
+      if (err==ENOMEM) {
+        LOG_ERROR_MSG("Post Send Error " << err << " ENOMEM")
+      }
+      else {
+        LOG_ERROR_MSG("Post Send Error " << err << " " <<  bgcios::errorString(err))
+      }
+      throw bgcios::errorString(err);
    }
 
    if (fl_index >= FlightLogSize){
@@ -585,6 +600,7 @@ size_t Flight_CIOS_MsgDecoder(size_t bufsize, char* buffer, const BG_FlightRecor
 
     char * text = NULL;
     switch(mh->type){
+/*
         case iosctl::ErrorAck: text=(char *)"iosctl::ErrorAck";break;
         case jobctl::ErrorAck: text=(char *)"jobctl::ErrorAck";break;
 
@@ -619,7 +635,7 @@ size_t Flight_CIOS_MsgDecoder(size_t bufsize, char* buffer, const BG_FlightRecor
 
         case jobctl::Reconnect: text=(char *)"jobctl::Reconnect";break;
         case jobctl::ReconnectAck: text=(char *)"jobctl::ReconnectAck";break;
-
+*/
         case stdio::ErrorAck: text=(char *)"ErrorAck";break;
         case stdio::WriteStdout:text=(char *)"stdio::WriteStdout";break;
         case stdio::WriteStdoutAck: text=(char *)"stdio::WriteStdoutAck";break;
@@ -633,7 +649,7 @@ size_t Flight_CIOS_MsgDecoder(size_t bufsize, char* buffer, const BG_FlightRecor
         case stdio::StartJobAck: text=(char *)"stdio::StartJobAck";break;
         case stdio::Reconnect: text=(char *)"stdio::Reconnect";break;
         case stdio::ReconnectAck: text=(char *)"stdio::ReconnectAck";break;
-
+/*
         case jobctl::DiscoverNode: text=(char *)"jobctl::DiscoverNode"; break;
         case jobctl::DiscoverNodeAck: text=(char *)"jobctl::DiscoverNodeAck";break;
         case jobctl::SetupJob: text=(char *)"jobctl::SetupJob"; break;
@@ -722,7 +738,7 @@ size_t Flight_CIOS_MsgDecoder(size_t bufsize, char* buffer, const BG_FlightRecor
          
          SYSIO(GpfsFcntl);
          SYSIO(GpfsFcntlAck);
-
+*/
         default:   break;
     }
     if (text){  

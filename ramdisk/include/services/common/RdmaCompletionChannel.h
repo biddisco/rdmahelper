@@ -32,7 +32,7 @@
 #include "PointerMap.h"
 #include <inttypes.h>
 #include <infiniband/verbs.h>
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -127,7 +127,7 @@ private:
 };
 
 //! Smart pointer for RdmaCompletionChannel object.
-typedef std::tr1::shared_ptr<RdmaCompletionChannel> RdmaCompletionChannelPtr;
+typedef std::shared_ptr<RdmaCompletionChannel> RdmaCompletionChannelPtr;
 
 //! \brief  RdmaCompletionChannel shift operator for output.
 

@@ -32,10 +32,11 @@
 
 // The following #defines will disable compiling calls to log4cxx into the CIOS code (for performance reasons)
 // To compile calls to particular levels of logging, comment out the appropriate defines from the following list 
-#define LOG_CIOS_DEBUG_DISABLE
-#define LOG_CIOS_TRACE_DISABLE
-#define LOG_CIOS_INFO_DISABLE
+//#define LOG_CIOS_DEBUG_DISABLE
+//#define LOG_CIOS_TRACE_DISABLE
+//#define LOG_CIOS_INFO_DISABLE
 //#define LOG_CIOS_WARN_DISABLE
+//#undef LOG_CIOS_TRACE_DISABLE
 
 #define LOGGING_DECLARE_PID_MDC(value) \
     log4cxx::MDC _pid_mdc( "pid", boost::lexical_cast<std::string>(value) + ":" );

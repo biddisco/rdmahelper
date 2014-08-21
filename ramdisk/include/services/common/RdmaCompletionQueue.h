@@ -31,7 +31,7 @@
 #include <inttypes.h>
 #include <infiniband/verbs.h>
 #include <string>
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -93,7 +93,7 @@ public:
    //! \param  opcode ibv_wc_opcode value.
    //! \return String representing value.
 
-   const std::string wc_opcode_str(enum ibv_wc_opcode opcode) const;
+   static const std::string wc_opcode_str(enum ibv_wc_opcode opcode);
 
    //! \brief  Write info about the completion queue to the specified stream.
    //! \param  os Output stream to write to.
@@ -136,7 +136,7 @@ private:
 };
 
 //! Smart pointer for RdmaCompletionQueue object.
-typedef std::tr1::shared_ptr<RdmaCompletionQueue> RdmaCompletionQueuePtr;
+typedef std::shared_ptr<RdmaCompletionQueue> RdmaCompletionQueuePtr;
 
 //! \brief  RdmaCompletionQueue shift operator for output.
 

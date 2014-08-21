@@ -67,6 +67,7 @@ RdmaCompletionChannel::RdmaCompletionChannel(ibv_context *context, bool nonblock
 
 RdmaCompletionChannel::~RdmaCompletionChannel()
 {
+  _queues.clear();
    // Destroy the completion channel.
    if (_completionChannel != NULL) {
       int fd = _completionChannel->fd;

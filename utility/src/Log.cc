@@ -237,7 +237,8 @@ void initializeLogging(
 string calcLoggername( const string& base, const string& file )
 {
     ostringstream oss;
-    oss << "ibm." << base << "." << processFilename( file );
+//    oss << "ibm." << base << "." << processFilename( file );
+    oss << "ibm." ;
     return oss.str();
 }
 

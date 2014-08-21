@@ -29,7 +29,7 @@
 
 #include "RdmaConnection.h"
 #include <netinet/in.h>
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -72,7 +72,7 @@ public:
 };
 
 //! Smart pointer for RdmaServer object.
-typedef std::tr1::shared_ptr<RdmaServer> RdmaServerPtr;
+typedef std::shared_ptr<RdmaServer> RdmaServerPtr;
 
 } // namespace bgcios
 

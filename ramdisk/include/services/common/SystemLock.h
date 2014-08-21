@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <sys/sem.h>
 #include <errno.h>
-#include <tr1/memory>
+#include <memory>
 
 #ifndef SEMUN
 #define SEMUN
@@ -124,7 +124,7 @@ private:
 };
 
 //! Smart pointer for SystemLock object.
-typedef std::tr1::shared_ptr<SystemLock> SystemLockPtr;
+typedef std::shared_ptr<SystemLock> SystemLockPtr;
 
 } // namespace bgcios
 

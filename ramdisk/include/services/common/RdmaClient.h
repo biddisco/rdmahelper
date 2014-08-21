@@ -30,7 +30,7 @@
 // Includes
 #include "RdmaConnection.h"
 #include "RdmaMemoryRegion.h"
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -125,6 +125,9 @@ public:
    //! \throws RdmaError.
 
    uint64_t postSendMsgSignaled(void) { return postSend(_outMessageRegion,true); }
+   uint64_t postSendMsgSignaled(uint32_t length, uint32_t immediateData ) {
+     return postSend(_outMessageRegion, true, true, immediateData);
+   }
 
    //! \brief  Post a send operation using the outbound message region.
    //! \param  length Length of message in outbound message region.
@@ -151,7 +154,10 @@ public:
    //! \brief  Post a receive operation using the inbound message region.
    //! \return 0 when successful, errno when unsuccessful.
 
+   int postRecvMessageSignaled(void) { return postRecv(_inMessageRegion); }
+
    int postRecvMessage(void) { return postRecv(_inMessageRegion); }
+   uint64_t getLastPostRecvKey() { return _inMessageRegion->getLocalKey(); }
 
    //! \brief  Post a receive operation using the inbound message region.
    //! \return 0 when successful, errno when unsuccessful.
@@ -211,6 +217,7 @@ public:
       return postSend(_outMessageRegionAux,false); // NOT signaled
    }
 
+   int waitForSingleCompletion();
 
 private:
 
@@ -222,10 +229,14 @@ private:
    void createRegions(RdmaProtectionDomainPtr domain);
 
    //! Memory region for inbound messages.
+   RdmaProtectionDomainPtr _domain;
+
+   //! Memory region for inbound messages.
    RdmaMemoryRegionPtr _inMessageRegion;
 
    //! Memory region for outbound messages.
    RdmaMemoryRegionPtr _outMessageRegion;
+
    //! Memory region for Auxilliary outbound messages.
    RdmaMemoryRegionPtr _outMessageRegionAux;
 
@@ -243,7 +254,7 @@ private:
 };
 
 //! Smart pointer for RdmaClient object.
-typedef std::tr1::shared_ptr<RdmaClient> RdmaClientPtr;
+typedef std::shared_ptr<RdmaClient> RdmaClientPtr;
 
 } // namespace bgcios
 

@@ -29,11 +29,11 @@
 
 // Includes
 #include <ramdisk/include/services/MessageHeader.h>
-#include <ramdisk/include/services/IosctlMessages.h>
-#include <ramdisk/include/services/JobctlMessages.h>
+//#include <ramdisk/include/services/IosctlMessages.h>
+//#include <ramdisk/include/services/JobctlMessages.h>
 #include <ramdisk/include/services/StdioMessages.h>
-#include <ramdisk/include/services/SysioMessages.h>
-#include <ramdisk/include/services/ToolctlMessages.h>
+//#include <ramdisk/include/services/SysioMessages.h>
+//#include <ramdisk/include/services/ToolctlMessages.h>
 
 #include <sstream>
 #include <string>
@@ -131,7 +131,7 @@ static const char* returnCodeToString(uint32_t returnCode)
    }
    return "INVALID RETURN CODE";
 }
-
+/*
 namespace iosctl
 {
 
@@ -220,7 +220,7 @@ static const char* toString(uint16_t type)
 }
 
 } // namespace jobctl
-
+*/
 namespace stdio
 {
 
@@ -257,7 +257,7 @@ static const char* toString(uint16_t type)
 }
 
 } // namespace stdio
-
+/*
 namespace sysio
 {
 
@@ -412,7 +412,7 @@ static const char* toString(uint16_t type)
 }
 
 } // namespace toolctl
-
+*/
 //! \brief  Convert a message type into a string.
 //! \param  msghdr Pointer to message header.
 //! \return Message type string.
@@ -420,21 +420,22 @@ static const char* toString(uint16_t type)
 static const char* toString(MessageHeader *msghdr)
 {
    switch (msghdr->service) {
+/*
       case bgcios::IosctlService:
          return bgcios::iosctl::toString(msghdr->type);
 
       case bgcios::JobctlService:
          return bgcios::jobctl::toString(msghdr->type);
-
+*/
       case bgcios::StdioService:
          return bgcios::stdio::toString(msghdr->type);
-
+/*
       case bgcios::SysioService:
          return bgcios::sysio::toString(msghdr->type);
 
       case bgcios::ToolctlService:
          return bgcios::toolctl::toString(msghdr->type);
-
+*/
       default:
          return "INVALID SERVICE";
    }

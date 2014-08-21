@@ -30,7 +30,7 @@
 // Includes
 #include <stdint.h>
 #include <infiniband/verbs.h>
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -74,7 +74,7 @@ private:
 };
 
 //! Smart pointer for RdmaProtectionDomain object.
-typedef std::tr1::shared_ptr<RdmaProtectionDomain> RdmaProtectionDomainPtr;
+typedef std::shared_ptr<RdmaProtectionDomain> RdmaProtectionDomainPtr;
 
 //! \brief  RdmaProtectionDomain shift operator for output.
 
