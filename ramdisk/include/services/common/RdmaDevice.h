@@ -31,17 +31,11 @@
 #include <netinet/in.h>
 #include <infiniband/verbs.h>
 #include <ifaddrs.h>
-#include <tr1/memory>
+#include <memory>
 #include <string>
 
 namespace bgcios
 {
-
-//! Name of vrnic InfiniBand device.
-const std::string RdmaDeviceName = "bgvrnic_0";
-
-//! Name of vrnic network interface.
-const std::string RdmaInterfaceName = "tor0";
 
 //! \brief InfiniBand device for RDMA operations.
 
@@ -80,6 +74,12 @@ public:
 
    in_addr_t getAddress(void);
 
+   uint64_t getDeviceInfo(bool verbose);
+
+   struct ibv_context *getContext();
+
+   static bool bgvrnic_device;
+
 private:
 
    //! Pointer to list of InfiniBand devices.
@@ -87,6 +87,11 @@ private:
 
    //! Pointer to selected device in the list.
    struct ibv_device *_myDevice;
+
+   //! context, you hould not normally use this
+   // as the rdma_cm lib handles it, but for
+   // access to nvp, this is provided
+   struct ibv_context *_context;
 
    //! Pointer to list of network interfaces.
    struct ifaddrs *_interfaceList;
@@ -97,7 +102,7 @@ private:
 };
 
 //! Smart pointer for RdmaDevice object.
-typedef std::tr1::shared_ptr<RdmaDevice> RdmaDevicePtr;
+typedef std::shared_ptr<RdmaDevice> RdmaDevicePtr;
 
 } // namespace bgcios
 

@@ -356,7 +356,19 @@ RdmaConnection::connect(void)
    }
    if (_event->event != RDMA_CM_EVENT_ESTABLISHED) {
       LOG_ERROR_MSG(_tag << "event " << rdma_event_str(_event->event) << " is not " << rdma_event_str(RDMA_CM_EVENT_ESTABLISHED));
-      return EINVAL;
+      /* valid REJ from consumer will always contain private data */
+      if (_event->status == 28 &&
+          _event->param.conn.private_data_len) {
+        LOG_ERROR_MSG(_tag << "rejected IB_CME_DESTINATION_REJECT_PRIVATE_DATA ");
+      } else {
+        LOG_ERROR_MSG(
+           "dapl_cma_active: non-consumer REJ," <<
+           " reason= " << _event->status << " DST " <<
+           inet_ntoa(((struct sockaddr_in *) &_cmId->route.addr.dst_addr)->sin_addr) << " "
+           << ntohs(((struct sockaddr_in *)&_cmId->route.addr.dst_addr)->sin_port)
+          );
+      }
+      return _event->status;
    }
 
    // Acknowledge the ESTABLISHED event.
@@ -431,6 +443,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge;
+   LOG_CIOS_TRACE_MSG(_tag << "posting Send with Length " << region->getMessageLength() << " " << std::setw(8) << std::setfill('0') << std::hex << region->getAddress());
    send_sge.addr = (uint64_t)region->getAddress();
    send_sge.length = region->getMessageLength();
    send_sge.lkey = region->getLocalKey();
@@ -554,10 +567,10 @@ RdmaConnection::postRecv(RdmaMemoryRegionPtr region)
    recv_wr.wr_id = (uint64_t)region->getLocalKey(); // So memory region is available in work completion.
 
    // Post a receive for inbound message.
-   LOG_CIOS_TRACE_MSG(_tag << "posting RECV work request to recv queue with " << recv_wr.num_sge << " sge, id=" << recv_wr.wr_id);
    ++_totalRecvPosted;
    struct ibv_recv_wr *badRequest;
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
+   LOG_CIOS_TRACE_MSG(_tag << "posting RECV work request to recv queue with " << recv_wr.num_sge << " sge, id=" << recv_wr.wr_id << " qp " << _cmId->qp);
    if (err != 0) {
       LOG_ERROR_MSG(_tag << "error posting to recv queue: " << bgcios::errorString(err));
       return err;
@@ -606,7 +619,7 @@ int
 RdmaConnection::stringToAddress(const std::string addrString, const std::string portString, struct sockaddr_in *address) const
 {
    struct addrinfo *res;
-   int err = getaddrinfo(addrString.c_str(), NULL, NULL, &res);
+   int err = getaddrinfo(addrString.c_str(), portString.c_str(), NULL, &res);
    if (err != 0) {
       LOG_ERROR_MSG(_tag << "failed to get address info for " << addrString << ": " << bgcios::errorString(err));
       return err;
@@ -618,7 +631,7 @@ RdmaConnection::stringToAddress(const std::string addrString, const std::string 
    }
 
    else {
-      *address = *(struct sockaddr_in *) res->ai_addr;
+      memcpy(address, res->ai_addr, sizeof(struct sockaddr_in));
       address->sin_port = (in_port_t)atoi(portString.c_str());
    }
 

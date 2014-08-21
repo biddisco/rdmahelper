@@ -36,7 +36,7 @@
 #include <infiniband/verbs.h>
 #include <stdexcept>
 #include <string>
-#include <tr1/memory>
+#include <memory>
 #include <ramdisk/include/services/common/Cioslog.h>
 
 namespace bgcios
@@ -286,7 +286,8 @@ postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    // Post a send to read data.
    ++_totalReadPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   CIOSLOGPOSTSEND(BGV_POST_RDR,send_wr,err);
+
+ //       CIOSLOGPOSTSEND(BGV_POST_RDR,send_wr,err);
    return err;
 }
 
@@ -419,6 +420,11 @@ postRecvAddressAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t lengt
    //! \return 0 when successful, errno when unsuccessful.
 
    int postRecv(RdmaMemoryRegionPtr region);
+
+      //! \brief  Decrease waiting receive counter
+      //! \return the value of the waiting receive counter after decrement
+      uint32_t decrementWaitingRecv() { return --_waitingRecvPosted; }
+      uint32_t getNumWaitingRecv() { return _waitingRecvPosted; }
 
    //! \brief  Get the rdma connection management identifier for the connection.
    //! \return Pointer to rdma cm identifier structure.
@@ -594,10 +600,13 @@ protected:
    //! Total number of rdma write operations posted to queue pair.
    uint64_t _totalWritePosted;
 
+      //! The number of outstanding receives in the queue
+      uint32_t _waitingRecvPosted;
+
 };
 
 //! Smart pointer for RdmaConnection object.
-typedef std::tr1::shared_ptr<RdmaConnection> RdmaConnectionPtr;
+  typedef std::shared_ptr<RdmaConnection> RdmaConnectionPtr;
 
 } // namespace bgcios
 

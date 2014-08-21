@@ -197,10 +197,17 @@ LDFLAGS += -L\$(utility_library_dir) -lbgutility -Wl,-rpath,\$(utility_library_d
 #ifndef BGQ_UTILITY_LOG_H_
 #define BGQ_UTILITY_LOG_H_
 
+//#include <extlib/include/log4cxx/logger.h>
 #include <log4cxx/logger.h>
 
 #include <string>
 
+#ifdef NDEBUG
+ // automatically disable logging in release mode
+ #define DISABLE_LOGGING
+#else
+ //#define DISABLE_LOGGING
+#endif
 
 namespace bgq {
 namespace utility {
@@ -271,19 +278,37 @@ std::string calcLoggername( const std::string& base, const std::string& file );
  */
 #define LOG_DECLARE_FILE( base ) \
   static log4cxx::LoggerPtr log_logger_(\
-      log4cxx::Logger::getLogger( bgq::utility::calcLoggername( (base), __FILE__ ) )\
+      log4cxx::Logger::getLogger( "ibm" )\
     )
+
+//#define LOG_DECLARE_FILE( base ) \
+//  static log4cxx::LoggerPtr log_logger_(\
+//      log4cxx::Logger::getLogger( bgq::utility::calcLoggername( (base), __FILE__ ) )\
+//    )
 
 
 // The following macros write log messages at different log levels.
 // Note that the message_expr parameter can be an expression, such as:
 // "the error from function is " << return_code
+#ifdef DISABLE_LOGGING
+  #define LOG_DEBUG_MSG(x)
+  #define LOG_TRACE_MSG(x)
+  #define LOG_INFO_MSG(x)
+  #define LOG_WARN_MSG(x)
+#define LOG_ERROR_MSG( message_expr ) \
+ LOG4CXX_ERROR( log_logger_, message_expr )
+
+#define LOG_FATAL_MSG( message_expr ) \
+ LOG4CXX_FATAL( log_logger_, message_expr )
+
+#else
+
 
 #define LOG_DEBUG_MSG( message_expr ) \
  LOG4CXX_DEBUG( log_logger_, message_expr )
 
 #define LOG_TRACE_MSG( message_expr ) \
- LOG4CXX_TRACE( log_logger_, message_expr )
+ LOG4CXX_DEBUG( log_logger_, message_expr )
 
 #define LOG_INFO_MSG( message_expr ) \
  LOG4CXX_INFO( log_logger_, message_expr )
@@ -322,8 +347,11 @@ std::string calcLoggername( const std::string& base, const std::string& file );
     ::log4cxx::helpers::MessageBuffer oss_; \
     log_logger_->forcedLog(::log4cxx::Level::getFatal(), oss_.str(oss_ << message_expr), LOG4CXX_LOCATION); }
 
+#endif // disable logging
+
 } // namespace bgq::utility
 } // namespace bgq
 
 
 #endif
+

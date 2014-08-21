@@ -56,6 +56,7 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
       throw e;
    }
 
+   LOG_DEBUG_MSG("Completion queue create size " << qSize);
    // Create a completion queue.
    _completionQ = ibv_create_cq(context, qSize, NULL, completionChannel, 0);
    if (_completionQ == NULL) {
@@ -168,8 +169,7 @@ RdmaCompletionQueue::popCompletion(void)
    return completion;
 }
 
-const std::string
-RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode) const
+std::string const RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode)
 {
    std::string str;
    switch (opcode) {

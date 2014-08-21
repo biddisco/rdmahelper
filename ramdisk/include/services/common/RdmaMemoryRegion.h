@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <tr1/memory>
+#include <memory>
 
 namespace bgcios
 {
@@ -69,8 +69,20 @@ public:
       _messageLength = 0;
       _frags = 0;
       _fd = -1;
-      _allocateLock = bgcios::SystemLockPtr(new bgcios::SystemLock(bgcios::AllocateMemoryRegionKey));
+ //      _allocateLock = bgcios::SystemLockPtr(new bgcios::SystemLock(bgcios::AllocateMemoryRegionKey));
    }
+
+    RdmaMemoryRegion(struct ibv_mr *region, uint32_t messageLength)
+    {
+       _region        = region;
+       _messageLength = messageLength;
+       _frags         = 0;
+       _fd            = -1;
+ //      _allocateLock = bgcios::SystemLockPtr(new bgcios::SystemLock(bgcios::AllocateMemoryRegionKey));
+    }
+
+   // create a memory region object by registering an existing address buffer
+   RdmaMemoryRegion(RdmaProtectionDomainPtr pd, const void *buffer, const uint64_t length);
 
    ~RdmaMemoryRegion()
    {
@@ -100,7 +112,6 @@ public:
    //! \param  pd Protection domain for memory region.
    //! \return 0 when successful, errno when unsuccessful.
    int allocate64kB(RdmaProtectionDomainPtr pd);
-
 
    //! \brief  Deregister and free the memory region.
    //! \return 0 when successful, errno when unsuccessful.
@@ -164,15 +175,14 @@ private:
    uint32_t _messageLength;
 
    //! System-scoped lock to serialize allocating memory regions.
-   bgcios::SystemLockPtr _allocateLock;
+//   bgcios::SystemLockPtr _allocateLock;
 
-   //! Maxium nuber of times to try allocating a memory region to reduce physical page fragmentation.
+   //! Maxium number of times to try allocating a memory region to reduce physical page fragmentation.
    static const uint32_t MaxAllocateAttempts = 16;
-
 };
 
 //! Smart pointer for RdmaMemoryRegion object.
-typedef std::tr1::shared_ptr<RdmaMemoryRegion> RdmaMemoryRegionPtr;
+typedef std::shared_ptr<RdmaMemoryRegion> RdmaMemoryRegionPtr;
 
 //! \brief  RdmaMemoryRegion shift operator for output.
 

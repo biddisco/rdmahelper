@@ -29,13 +29,16 @@
 #include <ramdisk/include/services/MessageHeader.h>
 #include <ramdisk/include/services/ServicesConstants.h>
 #include <ramdisk/include/services/common/logging.h>
+#include <chrono>
+#include <thread>
 
 using namespace bgcios;
 
 LOG_DECLARE_FILE("cios.common");
-
+/*---------------------------------------------------------------------------*/
 RdmaClient::~RdmaClient()
 {
+  LOG_DEBUG_MSG("Client destructor being called");
    // Destroy memory region for inbound messages.
    if (_inMessageRegion != NULL) {
       LOG_CIOS_DEBUG_MSG(_tag << "destroying inbound memory region");
@@ -48,16 +51,17 @@ RdmaClient::~RdmaClient()
       _outMessageRegion.reset();
    }
 }
-
+/*---------------------------------------------------------------------------*/
 void
 RdmaClient::createRegions(RdmaProtectionDomainPtr domain)
 {
    // Create a memory region for inbound messages.
    _inMessageRegion = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
    int err = _inMessageRegion->allocate64kB(domain);
+//   int err = _inMessageRegion->allocate(domain, 4096);
    if (err != 0) {
       RdmaError e(err, "allocating inbound memory region failed");
-      LOG_ERROR_MSG(_tag << "error allocating inbound message region: " << bgcios::errorString(err));
+      LOG_ERROR_MSG(_tag << "HERE : error allocating inbound message region: " << bgcios::errorString(err));
       throw e;
    }
 
@@ -69,14 +73,12 @@ RdmaClient::createRegions(RdmaProtectionDomainPtr domain)
       LOG_ERROR_MSG(_tag << "error allocating outbound message region: " << bgcios::errorString(err));
       throw e;
    }
-
    return;
 }
-
+/*---------------------------------------------------------------------------*/
 void
 RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
 {
-
    // Create auxilliary memory region for outbound messages.
    _outMessageRegionAux = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
    int err = _outMessageRegionAux->allocate(domain, bgcios::SmallMessageRegionSize);
@@ -88,10 +90,13 @@ RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
 
    return;
 }
-
+/*---------------------------------------------------------------------------*/
 int
 RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ)
 {
+   this->_domain = domain;
+   this->_completionQ = completionQ;
+
    // Create memory regions.
    try {
       createRegions(domain);
@@ -103,7 +108,7 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
 
    // Create a queue pair.
    try {
-      createQp(domain, completionQ, completionQ, 3, false);
+      createQp(domain, completionQ, completionQ, 1, false);
    }
    catch (RdmaError& e) {
       LOG_ERROR_MSG(_tag << "error creating queue pair: " << bgcios::errorString(e.errcode()));
@@ -111,7 +116,8 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
    }
 
    // Post a receive to get the first message.
-   postRecvMessage();
+
+//   postRecvMessage();
 
    // Resolve a route to the server.
    int err = resolveRoute();
@@ -128,4 +134,23 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
    }
 
    return 0;
+}
+
+/*---------------------------------------------------------------------------*/
+int
+RdmaClient::waitForSingleCompletion()
+{
+  while (this->_completionQ->removeCompletions(1)==0) {
+    // just wait
+    int mins = 0;
+    int secs = 0;
+    int msec = 500;
+    std::chrono::milliseconds duration( ((mins*60) + secs) * 1000 + msec);
+    //std::this_thread::sleep_for( duration );
+    usleep(500000);
+    printf("waiting\n");
+  }
+  this->_completionQ->popCompletion();
+  printf("Got here, exiting Wait \n");
+  return 1;
 }

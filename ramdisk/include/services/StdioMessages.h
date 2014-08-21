@@ -55,9 +55,6 @@ const uint16_t ReconnectAck       = 3014;
 const uint16_t ChangeConfig       = 3015;
 const uint16_t ChangeConfigAck    = 3016;
 
-//! Base port number for RDMA connections.
-const uint16_t BaseRdmaPort = 7101;
-
 //! Current version of protocol.
 const uint8_t ProtocolVersion = 4;
 
