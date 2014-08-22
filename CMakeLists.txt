@@ -1,4 +1,4 @@
-project(rdma_lib C CXX)
+project(rdmahelper C CXX)
 cmake_minimum_required(VERSION 2.8)
 
 if(BGQ OR BGAS)
@@ -10,7 +10,8 @@ endif()
 # Simple RDMA library 
 #------------------------------------------------------------------------------
 
-#  find_package(Boost 1.50.0  REQUIRED system regex date_time serialization program_options thread filesystem)
+find_package(Boost 1.50.0  REQUIRED system regex date_time serialization program_options thread filesystem)
+include_directories(${Boost_INCLUDE_DIR})
 
   LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
   
@@ -19,9 +20,9 @@ endif()
   set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/src/services/common)
 
   set(BGCIOS_UTILITY_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/Log.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/Properties.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/LoggingProgramOptions.cc
+#    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/Log.cc
+#    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/Properties.cc
+#    ${CMAKE_CURRENT_SOURCE_DIR}/utility/src/LoggingProgramOptions.cc
   )
 	
   set(BGCIOS_SRC
@@ -46,9 +47,9 @@ endif()
     ${MPI_C_INCLUDE_PATH}
   )
    
-  set_global_variable(BGC_INCLUDE_DIR
-    "${BGC_includes}" 
-  )
+#  set_global_variable(BGC_INCLUDE_DIR
+#    "${BGC_includes}" 
+#  )
   
   include_directories(
     ${BGC_includes}
@@ -59,14 +60,14 @@ endif()
     ${MPICH_ROOT}/lib
   )
   
-  add_library(rdma_lib
+  add_library(rdmahelper
     ${BGCIOS_UTILITY_SRC}
     ${BGCIOS_SRC} 
   )
   
-  target_link_libraries(rdma_lib
+  target_link_libraries(rdmahelper
     ${LOG4CXX_LIBRARIES}
-    ${_rdma_LIBRARY}
+    ${_rdmahelperRARY}
     ${_ibverbs_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}
     ${Boost_SYSTEM_LIBRARY_DEBUG}
@@ -84,13 +85,13 @@ set(BGCIOS_EXPORTED_TARGETS "bgq-targets")
 #---------------------------------------------------------------------------
 # Add Target(s) to CMake Install
 #---------------------------------------------------------------------------
-install(
-  TARGETS
-    rdma_lib
-  EXPORT
-    ${BGCIOS_EXPORTED_TARGETS}
-  LIBRARY DESTINATION ${BGQ_INSTALL_LIB_DIR}
-  ARCHIVE DESTINATION ${BGQ_INSTALL_LIB_DIR}
-  RUNTIME DESTINATION ${BGQ_INSTALL_BIN_DIR}
-)
+#install(
+#  TARGETS
+#    rdmahelper
+#  EXPORT
+#    ${BGCIOS_EXPORTED_TARGETS}
+#  LIBRARY DESTINATION ${BGQ_INSTALL_LIB_DIR}
+#  ARCHIVE DESTINATION ${BGQ_INSTALL_LIB_DIR}
+#  RUNTIME DESTINATION ${BGQ_INSTALL_BIN_DIR}
+#)
 
