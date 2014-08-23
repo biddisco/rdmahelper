@@ -104,11 +104,18 @@ const uint16_t MaxRanksPerNode = 64;
 //! \brief  Return a string describing an errno value.
 //! \param  error Errno value.
 //! \return Pointer to string describing errno value.
-
+//! Warning : strerror_r is differnt under posix/gnu
+//! mac version returns int, others char*
 inline char *errorString(int error)
 {
-   char errorBuffer[100];
+#if !defined(_GNU_SOURCE) || defined(__APPLE__)
+   char buf[256];
+   if (strerror_r (error, buf, sizeof buf)==0) return buf; 
+   else return NULL;
+#else
+   char errorBuffer[256];
    return strerror_r(error, errorBuffer, sizeof(errorBuffer));
+#endif
 }
 
 //! \brief  Check if simulation mode is enabled.

@@ -7,15 +7,35 @@ if(BGQ OR BGAS)
 endif()
 
 #------------------------------------------------------------------------------
-# Simple RDMA library 
+# CMake module path
 #------------------------------------------------------------------------------
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
+#------------------------------------------------------------------------------
+# Log4CXX 
+#------------------------------------------------------------------------------
+find_package(Log4Cxx)
+if(NOT Log4CXX_FOUND)
+  add_definitions(-DDISABLE_LOGGING)
+endif()
+
+#------------------------------------------------------------------------------
+# Boost 
+#------------------------------------------------------------------------------
 find_package(Boost 1.50.0  REQUIRED system regex date_time serialization program_options thread filesystem)
 include_directories(${Boost_INCLUDE_DIR})
 
+#------------------------------------------------------------------------------
+# OFED verbs stack
+#------------------------------------------------------------------------------
+find_package(OFED REQUIRED)
+include_directories(${OFED_INCLUDE_DIRS})
+
+#------------------------------------------------------------------------------
+# Simple RDMA library 
+#------------------------------------------------------------------------------
   LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
   
-  find_package(Log4Cxx)
 
   set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/src/services/common)
 
