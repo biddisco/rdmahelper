@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include <ramdisk/include/services/ServicesConstants.h>
 #include <ramdisk/include/services/MessageHeader.h>
@@ -49,7 +50,7 @@
 
 #include <infiniband/verbs.h>
 
-//LOG_DECLARE_FILE( "cios.logging" );
+LOG_DECLARE_FILE( "cios.logging" );
 
 #include <ramdisk/include/services/common/SignalHandler.h>
 
