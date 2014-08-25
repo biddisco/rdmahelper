@@ -1,0 +1,30 @@
+#-----------------------------------------------------------------------------
+# Config file for compiling against build directory
+#-----------------------------------------------------------------------------
+GET_FILENAME_COMPONENT (SELF_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+#-----------------------------------------------------------------------------
+# User Options
+#-----------------------------------------------------------------------------
+set (rdmahelper_BUILD_SHARED_LIBS    @BUILD_SHARED_LIBS@)
+
+#-----------------------------------------------------------------------------
+# Directories
+#-----------------------------------------------------------------------------
+set (rdmahelper_INCLUDE_DIR "@BGCIOS_includes@" )
+
+#-----------------------------------------------------------------------------
+# Version Strings
+#-----------------------------------------------------------------------------
+set (rdmahelper_VERSION_STRING @rdmahelper_VERSION_STRING@)
+set (rdmahelper_VERSION_MAJOR  @rdmahelper_VERSION_MAJOR@)
+set (rdmahelper_VERSION_MINOR  @rdmahelper_VERSION_MINOR@)
+
+#-----------------------------------------------------------------------------
+# Don't include targets if this file is being picked up by another
+# project which has already build hdf5 as a subproject
+#-----------------------------------------------------------------------------
+if (NOT TARGET rdmahelper)
+  include (${SELF_DIR}/@rdmahelper_PACKAGE@-targets.cmake)
+  set (rdmahelper_LIBRARIES "@rdmahelper_LIBRARIES_TO_EXPORT@")
+endif (NOT TARGET rdmahelper)
