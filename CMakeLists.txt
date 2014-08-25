@@ -14,6 +14,10 @@ if(NOT Log4CXX_FOUND)
   add_definitions(-DDISABLE_LOGGING)
 endif()
 
+# We don't want to build the entire BGQ stack, so we override a bunch of
+# logging stuff with this #define
+set(rdmahelper_DEFINITIONS ${rdmahelper_DEFINITIONS} "-DSIMPLIFIED_CIOSLOG")
+
 #------------------------------------------------------------------------------
 # Boost 
 #------------------------------------------------------------------------------
@@ -35,6 +39,11 @@ if(BGQ OR BGAS)
   message("Setting BGQ/BGAS flags")
   add_definitions(-DBGQ_BGAS)
 endif()
+
+#------------------------------------------------------------------------------
+# Definitions 
+#------------------------------------------------------------------------------
+add_definitions(${rdmahelper_DEFINITIONS})
 
 #------------------------------------------------------------------------------
 # RDMA Helper library 
