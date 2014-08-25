@@ -52,18 +52,26 @@ typedef struct BG_FlightRecorderFormatter
     const char* id_str;
 } BG_FlightRecorderFormatter_t;
 
-//#define CIOSLOGMSG(ID,msg) printMsg(ID,(bgcios::MessageHeader *)msg)
-#define CIOSLOGMSG(ID,msg) logMsg(ID,(bgcios::MessageHeader *)msg)
-#define CIOSLOGMSG_RECV_WC(ID,msg,completion) logMsgWC(ID,(bgcios::MessageHeader *)msg, (struct ibv_wc *)completion)
-#define CIOSLOGMSG_QP(ID,msg,qpNum) logMsgQpNum(ID,(bgcios::MessageHeader *)msg, qpNum)
-#define CIOSLOGMSG_SG(ID,siginfo_ptr) logMsgSig(ID,siginfo_ptr)
-#define CIOSLOGEVT_CH(ID,event) logChanEvent(ID,event)
-#define CIOSLOGSTAT_SIG(ID,sig_no,source) logIntString(ID,sig_no,source)
-#define CIOSLOGRDMA_REQ(ID,region,frags,fd) logCRdmaReg(ID, region->addr, region->length, region->lkey, frags, fd );
-#define CIOSLOGPLUGIN(ID,v0,v1,v2,v3) log4values(ID, (uint64_t)v0,(uint64_t)v1,(uint64_t)v2,(uint64_t)v3)
-#define CIOSLOGPOSTSEND(ID,send_wr,err) logPostSend( ID, send_wr,err)
-#define CIOSLOG4(ID,v0,v1,v2,v3) log4values(ID, (uint64_t)v0,(uint64_t)v1,(uint64_t)v2,(uint64_t)v3)
-#define CIOSLOGMSG_WC(ID,wc) logWorkCompletion(ID,(struct ibv_wc *)wc)
+#ifdef SIMPLIFIED_CIOSLOG
+  #include "utility/include/Log.h"
+  #define CIOSLOGRDMA_REQ(ID,region,frags,fd) LOG_TRACE_MSG("CIOSLOG " << ID << " " << region " " << frags << " " << fd)
+  #define CIOSLOGMSG_WC(ID,wc) LOG_TRACE_MSG("CIOSLOG " << ID << " " << wc->wr_id)
+  #define CIOSLOGPOSTSEND(ID,send_wr,err) LOG_TRACE_MSG("CIOSLOG " << ID << " " << send_wr.wr_id << " " << err)
+  #define CIOSLOGEVT_CH(ID,event) LOG_TRACE_MSG("CIOSLOG " << ID << " " << event)
+#else
+  //#define CIOSLOGMSG(ID,msg) printMsg(ID,(bgcios::MessageHeader *)msg)
+  #define CIOSLOGMSG(ID,msg) logMsg(ID,(bgcios::MessageHeader *)msg)
+  #define CIOSLOGMSG_RECV_WC(ID,msg,completion) logMsgWC(ID,(bgcios::MessageHeader *)msg, (struct ibv_wc *)completion)
+  #define CIOSLOGMSG_QP(ID,msg,qpNum) logMsgQpNum(ID,(bgcios::MessageHeader *)msg, qpNum)
+  #define CIOSLOGMSG_SG(ID,siginfo_ptr) logMsgSig(ID,siginfo_ptr)
+  #define CIOSLOGEVT_CH(ID,event) logChanEvent(ID,event)
+  #define CIOSLOGSTAT_SIG(ID,sig_no,source) logIntString(ID,sig_no,source)
+  #define CIOSLOGRDMA_REQ(ID,region,frags,fd) logCRdmaReg(ID, region->addr, region->length, region->lkey, frags, fd );
+  #define CIOSLOGPLUGIN(ID,v0,v1,v2,v3) log4values(ID, (uint64_t)v0,(uint64_t)v1,(uint64_t)v2,(uint64_t)v3)
+  #define CIOSLOGPOSTSEND(ID,send_wr,err) logPostSend( ID, send_wr,err)
+  #define CIOSLOG4(ID,v0,v1,v2,v3) log4values(ID, (uint64_t)v0,(uint64_t)v1,(uint64_t)v2,(uint64_t)v3)
+  #define CIOSLOGMSG_WC(ID,wc) logWorkCompletion(ID,(struct ibv_wc *)wc)
+#endif
 
 void printMsg(const char * ID, bgcios::MessageHeader *mh);
 
