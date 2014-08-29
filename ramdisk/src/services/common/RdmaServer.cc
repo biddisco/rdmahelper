@@ -32,7 +32,7 @@
 
 using namespace bgcios;
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 
 RdmaServer::RdmaServer(in_addr_t addr, in_port_t port) : RdmaConnection()
 {
