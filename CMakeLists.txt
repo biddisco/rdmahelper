@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 #------------------------------------------------------------------------------
 find_package(Log4Cxx)
 if(NOT Log4CXX_FOUND)
-  add_definitions(-DDISABLE_LOGGING)
+#  add_definitions(-DDISABLE_LOGGING)
 endif()
 
 # We don't want to build the entire BGQ stack, so we override a bunch of
@@ -27,8 +27,14 @@ include_directories(${Boost_INCLUDE_DIR})
 #------------------------------------------------------------------------------
 # OFED verbs stack
 #------------------------------------------------------------------------------
-find_package(OFED REQUIRED)
-include_directories(${OFED_INCLUDE_DIRS})
+find_package(IB_VERBS REQUIRED)
+include_directories(${IB_VERBS_INCLUDE_DIRS})
+
+#------------------------------------------------------------------------------
+# RDMA_CM
+#------------------------------------------------------------------------------
+find_package(RDMA_CM REQUIRED)
+include_directories(${RDMA_CM_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------
 # Detect Platform to setup special flags for specific machines
@@ -66,8 +72,6 @@ set(BGCIOS_SRC
 set(BGCIOS_includes
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/utility/include
-
-  ${_ofed_INCLUDE_DIR}/rdma
   ${LOG4CXX_INCLUDE_DIR}
   ${MPI_C_INCLUDE_PATH}
 )
@@ -88,12 +92,9 @@ add_library(rdmahelper
 
 target_link_libraries(rdmahelper
   ${LOG4CXX_LIBRARIES}
-  ${_rdmahelperRARY}
-  ${_ibverbs_LIBRARY}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}
-  ${Boost_SYSTEM_LIBRARY_DEBUG}
-  ${Boost_THREAD_LIBRARY_DEBUG}
-  ${Boost_FILESYSTEM_LIBRARY_DEBUG}
+  ${IB_VERBS_LIBRARIES}
+  ${RDMA_CM_LIBRARIES}
+  ${Boost_LIBRARIES}
   ${MPI_C_LIBRARIES}
 )
 
