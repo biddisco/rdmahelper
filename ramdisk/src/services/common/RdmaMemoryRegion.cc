@@ -62,7 +62,7 @@ struct bgvrnic_mr
 #define BGVRNIC_STRUCT(ptr) ((bgvrnic_mr*)(ptr))
 #define IBV_MR_STRUCT(ptr)  ((ibv_mr*)(ptr))
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 /*---------------------------------------------------------------------------*/
 RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd, const void *buffer, const uint64_t length)
 {

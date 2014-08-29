@@ -49,7 +49,7 @@
 
 using namespace bgcios;
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 
 RdmaConnection::RdmaConnection()
 {

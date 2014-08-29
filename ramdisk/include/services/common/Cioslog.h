@@ -54,10 +54,11 @@ typedef struct BG_FlightRecorderFormatter
 
 #ifdef SIMPLIFIED_CIOSLOG
   #include "utility/include/Log.h"
-  #define CIOSLOGRDMA_REQ(ID,region,frags,fd) LOG_TRACE_MSG("CIOSLOG " << ID << " " << region " " << frags << " " << fd)
-  #define CIOSLOGMSG_WC(ID,wc) LOG_TRACE_MSG("CIOSLOG " << ID << " " << wc->wr_id)
-  #define CIOSLOGPOSTSEND(ID,send_wr,err) LOG_TRACE_MSG("CIOSLOG " << ID << " " << send_wr.wr_id << " " << err)
-  #define CIOSLOGEVT_CH(ID,event) LOG_TRACE_MSG("CIOSLOG " << ID << " " << event)
+  LOG_DECLARE_FILE("jb.");
+  #define CIOSLOGRDMA_REQ(ID,region,frags,fd) LOG_TRACE_MSG("CIOSLOGRDMA_REQ " << ID << " " << region << " " << frags << " " << fd)
+  #define CIOSLOGMSG_WC(ID,wc)                LOG_TRACE_MSG("CIOSLOGMSG_WC   " << ID << " " << ((struct ibv_wc *)wc)->wr_id)
+  #define CIOSLOGPOSTSEND(ID,send_wr,err)     LOG_TRACE_MSG("CIOSLOGPOSTSEND " << ID << " " << send_wr.wr_id << " " << err)
+  #define CIOSLOGEVT_CH(ID,event)             LOG_TRACE_MSG("CIOSLOGEVT_CH   " << ID << " " << event)
 #else
   //#define CIOSLOGMSG(ID,msg) printMsg(ID,(bgcios::MessageHeader *)msg)
   #define CIOSLOGMSG(ID,msg) logMsg(ID,(bgcios::MessageHeader *)msg)

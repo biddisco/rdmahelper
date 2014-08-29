@@ -793,19 +793,13 @@ size_t Flight_CIOS_MsgDecoder(size_t bufsize, char* buffer, const BG_FlightRecor
          
          SYSIO(GpfsFcntl);
          SYSIO(GpfsFcntlAck);
-<<<<<<< HEAD
 
          SYSIO(Ftruncate64);
          SYSIO(Ftruncate64Ack);
          SYSIO(Truncate64);
          SYSIO(Truncate64Ack);
         
-
-||||||| merged common ancestors
-
-=======
 */
->>>>>>> Changes to BGQ source to get rdma classes compiling as small library
         default:   break;
     }
     if (text){  

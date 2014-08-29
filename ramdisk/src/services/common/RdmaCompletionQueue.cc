@@ -36,7 +36,7 @@
 
 using namespace bgcios;
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 
 RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_comp_channel *completionChannel)
 {
