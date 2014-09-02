@@ -31,6 +31,7 @@
 #include "RdmaConnection.h"
 #include "RdmaMemoryRegion.h"
 #include <memory>
+#include <ramdisk/include/services/common/RdmaRegisteredMemoryPool.h>
 
 namespace bgcios
 {
@@ -46,7 +47,7 @@ public:
    RdmaClient() : RdmaConnection() {
       _numRecvBlocks = 0;
       _sizeBlock = 512;
-       _usingBlocking = false;
+      _usingBlocking = false;
    }
 
    //! \brief  Constructor.
@@ -62,7 +63,7 @@ public:
       _uniqueId = (uint64_t)-1;
       _numRecvBlocks = 0;
       _sizeBlock = 512;
-       _usingBlocking = false;
+      _usingBlocking = false;
    }
 
    //! \brief  Constructor.
@@ -79,7 +80,7 @@ public:
       _uniqueId = (uint64_t)-1;
       _numRecvBlocks = 0;
       _sizeBlock = 512;
-       _usingBlocking = false;
+      _usingBlocking = false;
    }
 
    //! \brief  Default destructor.
@@ -93,6 +94,18 @@ public:
 
    int makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ);
 
+   //! JB. Gets a memory region from the pinned memory pool
+   //! throws runtime_error if no free blocks are available.
+   RdmaMemoryRegion * getFreeRegion(RdmaProtectionDomainPtr protectionDomain=NULL);
+
+
+   //! \brief  Get completion queue used for both send and receive operations.
+   //! \return Completion queue pointer.
+
+   RdmaCompletionQueuePtr& getCompletionQ(void) { return _completionQ; }
+
+
+/*
    //! \brief  Get the pointer to the inbound message region.
    //! \return Pointer to beginning of region.
 
@@ -154,24 +167,26 @@ public:
    //! \brief  Post a receive operation using the inbound message region.
    //! \return 0 when successful, errno when unsuccessful.
 
-   int postRecvMessageSignaled(void) { return postRecv(_inMessageRegion); }
+   uint64_t postRecvMessageSignaled(void) { return postRecv(_inMessageRegion); }
 
-   int postRecvMessage(void) { return postRecv(_inMessageRegion); }
-   uint64_t getLastPostRecvKey() { return _inMessageRegion->getLocalKey(); }
+   //! JB. We need to use the address as wr_id
+   uint64_t postRecvMessage(void) {
+     return postRecvAddressAsID(_inMessageRegion, (uint64_t)_inMessageRegion->getAddress(), _sizeBlock);
+   }
 
    //! \brief  Post a receive operation using the inbound message region.
    //! \return 0 when successful, errno when unsuccessful.
 
    int postRecvMsg(uint64_t address) { return postRecvAddressAsID(_inMessageRegion, address, _sizeBlock); }
 
-      //! \brief  Post a receive operation using the inbound message region.
+   //! \brief  Post a receive operation using the inbound message region.
    //! \return 0 when successful, errno when unsuccessful.
 
    int postRecvMsgMult(int numRecvRegions) 
   { 
     if ( _usingBlocking) return EINVAL;
     if ( (numRecvRegions * _sizeBlock) > _inMessageRegion->getLength() ) return EINVAL;
-     _usingBlocking = true;
+    _usingBlocking = true;
     _numRecvBlocks = numRecvRegions;
     int err = 0;
     for (int i=0;i<numRecvRegions;i++){
@@ -180,11 +195,6 @@ public:
     }
     return 0;
   }
-
-   //! \brief  Get completion queue used for both send and receive operations.
-   //! \return Completion queue pointer.
-
-   RdmaCompletionQueuePtr& getCompletionQ(void) { return _completionQ; }
 
    //! \brief  Get the unique id for the client.
    //! \return Unique id value.
@@ -216,9 +226,7 @@ public:
       _outMessageRegionAux->setMessageLength(length);
       return postSend(_outMessageRegionAux,false); // NOT signaled
    }
-
-   int waitForSingleCompletion();
-
+*/
 private:
 
    //! \brief  Create memory regions for inbound and outbound messages.
@@ -251,6 +259,7 @@ private:
    int _sizeBlock;
    bool  _usingBlocking;
 
+   //std::shared_ptr<pinned_pool> _pinned_memory_pool;
 };
 
 //! Smart pointer for RdmaClient object.

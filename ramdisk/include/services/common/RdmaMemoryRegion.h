@@ -28,7 +28,7 @@
 #define COMMON_RDMAMEMORYREGION_H
 
 // Includes
-#include "RdmaProtectionDomain.h"
+#include <ramdisk/include/services/common/RdmaProtectionDomain.h>
 #include <ramdisk/include/services/common/SystemLock.h>
 #include <infiniband/verbs.h>
 #include <stdint.h>
@@ -69,7 +69,6 @@ public:
       _messageLength = 0;
       _frags = 0;
       _fd = -1;
- //      _allocateLock = bgcios::SystemLockPtr(new bgcios::SystemLock(bgcios::AllocateMemoryRegionKey));
    }
 
     RdmaMemoryRegion(struct ibv_mr *region, uint32_t messageLength)
@@ -78,15 +77,15 @@ public:
        _messageLength = messageLength;
        _frags         = 0;
        _fd            = -1;
- //      _allocateLock = bgcios::SystemLockPtr(new bgcios::SystemLock(bgcios::AllocateMemoryRegionKey));
     }
 
-   // create a memory region object by registering an existing address buffer
-   RdmaMemoryRegion(RdmaProtectionDomainPtr pd, const void *buffer, const uint64_t length);
+    // create a memory region object by registering an existing address buffer
+    RdmaMemoryRegion(RdmaProtectionDomainPtr pd, const void *buffer, const uint64_t length);
+
 
    ~RdmaMemoryRegion()
    {
-      release();
+     release();
    }
 
    //! \brief  Check if memory region has been allocated.
@@ -174,10 +173,7 @@ private:
    //! Length of a message in the memory region.
    uint32_t _messageLength;
 
-   //! System-scoped lock to serialize allocating memory regions.
-//   bgcios::SystemLockPtr _allocateLock;
-
-   //! Maxium number of times to try allocating a memory region to reduce physical page fragmentation.
+   //! MaximTum number of times to try allocating a memory region to reduce physical page fragmentation.
    static const uint32_t MaxAllocateAttempts = 16;
 };
 

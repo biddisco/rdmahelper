@@ -139,6 +139,8 @@ RdmaConnection::init(void)
    _totalSendPosted = 0;
    _totalReadPosted = 0;
    _totalWritePosted = 0;
+   _waitingRecvPosted = 0;
+   _waitingSendPosted = 0;
 
    return;
 }
@@ -419,7 +421,7 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 {
    // Post the send request.
    struct ibv_send_wr *badRequest;
-   LOG_CIOS_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode) << " (" << request->opcode << ") work request to send queue with " <<
+   LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode) << " (" << request->opcode << ") work request to send queue with " <<
                  request->num_sge << " sge, id=" << request->wr_id << ", imm_data=0x" << std::setw(8) << std::setfill('0') << std::hex << request->imm_data);
    int err = ibv_post_send(_cmId->qp, request, &badRequest);
    if (err != 0) {
@@ -437,17 +439,18 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 
    return request->wr_id;
 }
-
+//
+// JB approved
+//
 uint64_t
 RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge;
-   LOG_CIOS_TRACE_MSG(_tag << "posting Send with Length " << region->getMessageLength() << " " << std::setw(8) << std::setfill('0') << std::hex << region->getAddress());
    send_sge.addr = (uint64_t)region->getAddress();
    send_sge.length = region->getMessageLength();
    send_sge.lkey = region->getLocalKey();
-   region->setMessageLength(0);
+//   region->setMessageLength(0);
 
    // Build a send work request.
    struct ibv_send_wr send_wr;
@@ -465,13 +468,16 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
    if (signaled) {
       send_wr.send_flags |= IBV_SEND_SIGNALED;
    }
-   send_wr.wr_id = region->getLocalKey(); // So memory region is available in work completion.
+   // use address for wr_id
+   send_wr.wr_id = (uint64_t)region.get();
 
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << send_wr.wr_id << " with Length " << send_sge.length
+       << " " << std::setw(8) << std::setfill('0') << std::hex << send_sge.addr);
    // Post a send for outbound message.
    ++_totalSendPosted;
    return postSendQ(&send_wr);
 }
-
+/*
 uint64_t
 RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData)
 {
@@ -565,7 +571,7 @@ RdmaConnection::postRecv(RdmaMemoryRegionPtr region)
    recv_wr.sg_list = &recv_sge;
    recv_wr.num_sge = 1;
    recv_wr.wr_id = (uint64_t)region->getLocalKey(); // So memory region is available in work completion.
-
+printf("just got a local key of %d\n",recv_wr.wr_id);
    // Post a receive for inbound message.
    ++_totalRecvPosted;
    struct ibv_recv_wr *badRequest;
@@ -578,7 +584,7 @@ RdmaConnection::postRecv(RdmaMemoryRegionPtr region)
 
    return 0;
 }
-
+*/
 int
 RdmaConnection::waitForEvent(void)
 {

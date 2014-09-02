@@ -32,7 +32,13 @@
 #include <chrono>
 #include <thread>
 
+#include "ramdisk/include/services/common/RdmaRegisteredMemoryPool.h"
+
 using namespace bgcios;
+
+RdmaProtectionDomainPtr pinned_allocator_malloc_free::_protectionDomain;
+RdmaMemoryRegionPtr     pinned_allocator_malloc_free::_region;
+std::mutex              pinned_allocator_malloc_free::_pd_mutex;
 
 //LOG_DECLARE_FILE("cios.common");
 /*---------------------------------------------------------------------------*/
@@ -76,6 +82,7 @@ RdmaClient::createRegions(RdmaProtectionDomainPtr domain)
    return;
 }
 /*---------------------------------------------------------------------------*/
+/*
 void
 RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
 {
@@ -90,6 +97,7 @@ RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
 
    return;
 }
+*/
 /*---------------------------------------------------------------------------*/
 int
 RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ)
@@ -137,20 +145,27 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
 }
 
 /*---------------------------------------------------------------------------*/
-int
-RdmaClient::waitForSingleCompletion()
+RdmaMemoryRegion * RdmaClient::getFreeRegion(RdmaProtectionDomainPtr protectionDomain)
 {
-  while (this->_completionQ->removeCompletions(1)==0) {
-    // just wait
-    int mins = 0;
-    int secs = 0;
-    int msec = 500;
-    std::chrono::milliseconds duration( ((mins*60) + secs) * 1000 + msec);
-    //std::this_thread::sleep_for( duration );
-    usleep(500000);
-    printf("waiting\n");
+  /*
+  if (!this->_pinned_memory_pool) {
+    this->_pinned_memory_pool = std::shared_ptr<pinned_pool>(new pinned_pool(512,512));
+    pinned_allocator_malloc_free::setProtectionDomain(this->_domain);
   }
-  this->_completionQ->popCompletion();
-  printf("Got here, exiting Wait \n");
-  return 1;
+  RdmaMemoryRegionPtr region = this->_pinned_memory_pool->create();
+  if (region==NULL) {
+    LOG_ERROR_MSG("Failed to allocate a pinned memory region");
+//    throw std::bad_alloc("Failed to allocate a pinned memory region");
+  }
+  */
+  RdmaMemoryRegion *region = new RdmaMemoryRegion();
+  if (protectionDomain) {
+    region->allocate(protectionDomain,512);
+  }
+  else {
+    region->allocate(this->_domain, 512);
+  }
+  region->setMessageLength(512);
+  return region;
 }
+

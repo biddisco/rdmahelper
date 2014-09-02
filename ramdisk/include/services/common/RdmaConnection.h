@@ -32,12 +32,15 @@
 #include "RdmaMemoryRegion.h"
 #include "RdmaProtectionDomain.h"
 #include "RdmaCompletionQueue.h"
+#include "RdmaError.h"
 #include <inttypes.h>
 #include <rdma/rdma_cma.h>
 #include <infiniband/verbs.h>
 #include <stdexcept>
 #include <string>
 #include <memory>
+#include <iostream>
+#include <iomanip>
 
 namespace bgcios
 {
@@ -160,7 +163,7 @@ public:
    {
       return postSend(region, signaled, false, 0);
    }
-
+/*
    //! \brief  Post a send with immediate data operation using the specified memory region.
    //! \param  region Memory region that contains data to send.
    //! \param  immediateData Immediate data value.
@@ -183,7 +186,7 @@ public:
 
    uint64_t postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData);
 
-int postSend(uint32_t regionLocalKey, void *address, uint32_t length, uint64_t refWorkId, uint32_t immediateData)
+uint64_t postSend(uint32_t regionLocalKey, void *address, uint32_t length, uint64_t refWorkId, uint32_t immediateData)
 {
    struct ibv_send_wr *badRequest;
    // Build scatter/gather element for outbound data.
@@ -203,7 +206,10 @@ int postSend(uint32_t regionLocalKey, void *address, uint32_t length, uint64_t r
    // Post a send for outbound message.
    ++_totalSendPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   return err;
+   if (err!=0) {
+     throw(RdmaError(err, "postSend failed"));
+   }
+   return send_wr.wr_id;
 }
 
 uint64_t
@@ -229,7 +235,10 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
    // Post a send for outbound message.
    ++_totalSendPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   return err;
+   if (err!=0) {
+     throw(RdmaError(err, "postSendNoImmed failed"));
+   }
+   return send_wr.wr_id;
 }
 
    //! \brief  Post a rdma write operation from the specified memory region to a remote memory region.
@@ -259,6 +268,8 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
    //! \param  length is the size of the transfer
    //! \return error status for the posted operation.
    //! 
+
+*/
 int
 postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
                                              uint32_t localKey,  uint64_t localAddr,
@@ -285,9 +296,9 @@ postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 
    // Post a send to read data.
    ++_totalReadPosted;
+   ++_waitingSendPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-
- //       CIOSLOGPOSTSEND(BGV_POST_RDR,send_wr,err);
+   LOG_CIOS_TRACE_MSG(_tag << "posting Read wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
    return err;
 }
 
@@ -328,10 +339,10 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    // Post a send to read data.
    ++_totalReadPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   CIOSLOGPOSTSEND(BGV_POST_WRR,send_wr,err);
+   LOG_CIOS_TRACE_MSG(_tag << "posting Write wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
    return err;
 }
-
+/*
 int
 postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
                                              uint32_t localKey,  uint64_t localAddr,
@@ -382,49 +393,81 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    return err;
 }
 
-
    //! \brief  Post a receive operation using the specified memory region with address specified in the region
    //! \param  region Memory region to put received data.
    //! \param  address is the Address in the local memory region
    //! \param  length is the length of the memo
-   //! \return 0 when successful, errno when unsuccessful.
+   //! \return Work request id for the posted operation.
+   //! \throws RdmaError.
 
-uint64_t
-postRecvAddressAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
-{
-   // Build scatter/gather element for inbound message.
-   struct ibv_sge recv_sge;
-   recv_sge.addr =   address;
-   recv_sge.length = length;
-   recv_sge.lkey = region->getLocalKey();
+  uint64_t
+  postRecvAddressAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
+  {
+     // Build scatter/gather element for inbound message.
+     struct ibv_sge recv_sge;
+     recv_sge.addr =   address;
+     recv_sge.length = length;
+     recv_sge.lkey = region->getLocalKey();
 
-   // Build receive work request.
-   struct ibv_recv_wr recv_wr;
-   memset(&recv_wr, 0, sizeof(recv_wr));
-   recv_wr.next = NULL;
-   recv_wr.sg_list = &recv_sge;
-   recv_wr.num_sge = 1;
-   recv_wr.wr_id = address;
-   ++_totalRecvPosted;
-   struct ibv_recv_wr *badRequest;
-   int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
-   if (err != 0) {
-      return err;
-   }
+     // Build receive work request.
+     struct ibv_recv_wr recv_wr;
+     memset(&recv_wr, 0, sizeof(recv_wr));
+     recv_wr.next = NULL;
+     recv_wr.sg_list = &recv_sge;
+     recv_wr.num_sge = 1;
+     recv_wr.wr_id = address;
+     ++_totalRecvPosted;
+     struct ibv_recv_wr *badRequest;
+     int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
+     if (err!=0) {
+       throw(RdmaError(err, "postSendNoImmed failed"));
+     }
+     return recv_wr.wr_id;
+  }
+*/
+  uint64_t
+  postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
+  {
+     // Build scatter/gather element for inbound message.
+     struct ibv_sge recv_sge;
+     recv_sge.addr =   address;
+     recv_sge.length = length;
+     recv_sge.lkey = region->getLocalKey();
 
-   return 0;
-}
-
+     // Build receive work request.
+     struct ibv_recv_wr recv_wr;
+     memset(&recv_wr, 0, sizeof(recv_wr));
+     recv_wr.next = NULL;
+     recv_wr.sg_list = &recv_sge;
+     recv_wr.num_sge = 1;
+     recv_wr.wr_id = (uint64_t)region.get();
+     ++_totalRecvPosted;
+     struct ibv_recv_wr *badRequest;
+     int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
+     if (err!=0) {
+       throw(RdmaError(err, "postSendNoImmed failed"));
+     }
+     std::cout << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address << std::endl;
+     _waitingRecvPosted++;
+     LOG_DEBUG_MSG(_tag << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
+     return recv_wr.wr_id;
+  }
+/*
    //! \brief  Post a receive operation using the specified memory region.
    //! \param  region Memory region to put received data.
    //! \return 0 when successful, errno when unsuccessful.
 
    int postRecv(RdmaMemoryRegionPtr region);
+*/
+   //! \brief  Decrease waiting receive counter
+   //! \return the value of the waiting receive counter after decrement
+  uint32_t decrementWaitingRecv() { return --_waitingRecvPosted; }
+  uint32_t decrementWaitingSend() { return --_waitingSendPosted; }
 
-      //! \brief  Decrease waiting receive counter
-      //! \return the value of the waiting receive counter after decrement
-      uint32_t decrementWaitingRecv() { return --_waitingRecvPosted; }
-      uint32_t getNumWaitingRecv() { return _waitingRecvPosted; }
+   //! \brief  Get the waiting receive counter
+   //! \return the value of the waiting receive counter after decrement
+   uint32_t getNumWaitingRecv() { return _waitingRecvPosted; }
+   uint32_t getNumWaitingSend() { return _waitingSendPosted; }
 
    //! \brief  Get the rdma connection management identifier for the connection.
    //! \return Pointer to rdma cm identifier structure.
@@ -557,7 +600,6 @@ protected:
 
    //! \brief  Destroy resources owned by object.
    //! \return Nothing.
-
    void destroy(void);
 
    uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData);
@@ -568,7 +610,6 @@ protected:
    //! \throws RdmaError.
 
    uint64_t postSendQ(struct ibv_send_wr *request);
-
 
    //! Tag to identify this connection in trace points.
    std::string _tag;
@@ -600,8 +641,9 @@ protected:
    //! Total number of rdma write operations posted to queue pair.
    uint64_t _totalWritePosted;
 
-      //! The number of outstanding receives in the queue
-      uint32_t _waitingRecvPosted;
+   //! The number of outstanding receives in the queue
+   uint32_t _waitingRecvPosted;
+   uint32_t _waitingSendPosted;
 
 };
 
