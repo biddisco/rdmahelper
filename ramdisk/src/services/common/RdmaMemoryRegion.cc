@@ -25,11 +25,11 @@
 //! \file  RdmaMemoryRegion.cc
 //! \brief Methods for bgcios::RdmaMemoryRegion class.
 // Includes
+#include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaMemoryRegion.h>
 #include <ramdisk/include/services/common/RdmaDevice.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include <ramdisk/include/services/common/logging.h>
-#include <ramdisk/include/services/common/Cioslog.h>
+//#include <ramdisk/include/services/common/Cioslog.h>
 #include <iostream>
 #include <iomanip>
 #include <sys/mman.h>

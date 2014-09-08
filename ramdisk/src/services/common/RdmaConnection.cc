@@ -24,12 +24,12 @@
 //! \file  RdmaConnection.cc
 //! \brief Methods for bgcios::RdmaConnection class.
 
+#include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaConnection.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/ServicesConstants.h>
 #include <ramdisk/include/services/MessageHeader.h>
-#include <ramdisk/include/services/common/logging.h>
-#include <ramdisk/include/services/common/Cioslog.h>
+//#include <ramdisk/include/services/common/Cioslog.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>

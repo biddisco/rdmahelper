@@ -28,7 +28,7 @@
 #include <ramdisk/include/services/common/RdmaProtectionDomain.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include <ramdisk/include/services/common/logging.h>
+#include "rdmahelper_logging.h"
 #include <errno.h>
 
 using namespace bgcios;

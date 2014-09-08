@@ -1,0 +1,6 @@
+#if !defined(RDMAHELPER_CONFIG_DEFINES_HPP)
+#define RDMAHELPER_CONFIG_DEFINES_HPP
+
+@project_config_defines@
+
+#endif

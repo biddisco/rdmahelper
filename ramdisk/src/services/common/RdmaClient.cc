@@ -24,11 +24,11 @@
 //! \file  RdmaClient.cc
 //! \brief Methods for bgcios::RdmaClient class.
 
+#include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaClient.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/MessageHeader.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include <ramdisk/include/services/common/logging.h>
 #include <chrono>
 #include <thread>
 

@@ -25,10 +25,10 @@
 //! \brief Methods for bgcios::RdmaServer class.
 
 // Includes
+#include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaServer.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include <ramdisk/include/services/common/logging.h>
 
 using namespace bgcios;
 

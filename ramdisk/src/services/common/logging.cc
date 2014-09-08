@@ -24,7 +24,7 @@
 //! \file  logging.cc
 //! \brief Log helper functions.
 
-#include <ramdisk/include/services/common/logging.h>
+"rdmahelper_logging.h"
 #include <log4cxx/logger.h>
 #include <execinfo.h>
 #include <stdlib.h>

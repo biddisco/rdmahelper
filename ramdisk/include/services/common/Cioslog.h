@@ -26,7 +26,6 @@
 
 #ifndef CIOSLOG_H
 #define CIOSLOG_H
-#include <ramdisk/include/services/common/logging.h>
 #include <ramdisk/include/services/MessageHeader.h>
 #include <signal.h>
 #include <infiniband/verbs.h>

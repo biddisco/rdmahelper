@@ -16,7 +16,10 @@ set(rdmahelper_DEFINITIONS @rdmahelper_DEFINITIONS@)
 #-----------------------------------------------------------------------------
 # Directories
 #-----------------------------------------------------------------------------
-set (rdmahelper_INCLUDE_DIR "@BGCIOS_includes@" )
+set (rdmahelper_INCLUDE_DIR 
+  "@BGCIOS_includes@"
+  "@PROJECT_BINARY_DIR@" 
+)
 
 #-----------------------------------------------------------------------------
 # Version Strings

@@ -27,12 +27,12 @@
 #include <ramdisk/include/services/common/RdmaCompletionQueue.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include <ramdisk/include/services/common/logging.h>
+#include "rdmahelper_logging.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
-#include <ramdisk/include/services/common/Cioslog.h>
+//#include <ramdisk/include/services/common/Cioslog.h>
 
 using namespace bgcios;
 

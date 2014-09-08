@@ -28,7 +28,7 @@
 #define COMMON_RDMACONNECTION_H
 
 // Includes
-#include <ramdisk/include/services/common/Cioslog.h>
+//#include <ramdisk/include/services/common/Cioslog.h>
 #include "RdmaMemoryRegion.h"
 #include "RdmaProtectionDomain.h"
 #include "RdmaCompletionQueue.h"

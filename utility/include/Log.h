@@ -290,7 +290,7 @@ std::string calcLoggername( const std::string& base, const std::string& file );
 // The following macros write log messages at different log levels.
 // Note that the message_expr parameter can be an expression, such as:
 // "the error from function is " << return_code
-#ifdef DISABLE_LOGGING
+#ifdef RDMAHELPER_DISABLE_LOGGING
   #define LOG_DEBUG_MSG(x)
   #define LOG_TRACE_MSG(x)
   #define LOG_INFO_MSG(x)
