@@ -475,6 +475,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
        << " " << std::setw(8) << std::setfill('0') << std::hex << send_sge.addr);
    // Post a send for outbound message.
    ++_totalSendPosted;
+   ++_waitingSendPosted;
    return postSendQ(&send_wr);
 }
 /*

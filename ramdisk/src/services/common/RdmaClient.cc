@@ -36,9 +36,9 @@
 
 using namespace bgcios;
 
-RdmaProtectionDomainPtr pinned_allocator_malloc_free::_protectionDomain;
-RdmaMemoryRegionPtr     pinned_allocator_malloc_free::_region;
-std::mutex              pinned_allocator_malloc_free::_pd_mutex;
+//RdmaProtectionDomainPtr pinned_allocator_malloc_free::_protectionDomain;
+//RdmaMemoryRegionPtr     pinned_allocator_malloc_free::_region;
+//std::mutex              pinned_allocator_malloc_free::_pd_mutex;
 
 //LOG_DECLARE_FILE("cios.common");
 /*---------------------------------------------------------------------------*/
@@ -56,6 +56,10 @@ RdmaClient::~RdmaClient()
       LOG_CIOS_DEBUG_MSG(_tag << "destroying outbound memory region");
       _outMessageRegion.reset();
    }
+
+   // clear memory pool reference
+   LOG_CIOS_DEBUG_MSG(_tag << "releasing memory pool reference");
+   _memoryPool.reset();
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -145,7 +149,7 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
 }
 
 /*---------------------------------------------------------------------------*/
-RdmaMemoryRegion * RdmaClient::getFreeRegion(RdmaProtectionDomainPtr protectionDomain)
+RdmaMemoryRegion * RdmaClient::getFreeRegion()
 {
   /*
   if (!this->_pinned_memory_pool) {
@@ -158,6 +162,7 @@ RdmaMemoryRegion * RdmaClient::getFreeRegion(RdmaProtectionDomainPtr protectionD
 //    throw std::bad_alloc("Failed to allocate a pinned memory region");
   }
   */
+  /*
   RdmaMemoryRegion *region = new RdmaMemoryRegion();
   if (protectionDomain) {
     region->allocate(protectionDomain,512);
@@ -166,6 +171,10 @@ RdmaMemoryRegion * RdmaClient::getFreeRegion(RdmaProtectionDomainPtr protectionD
     region->allocate(this->_domain, 512);
   }
   region->setMessageLength(512);
+*/
+  RdmaMemoryRegion *region = this->_memoryPool->create();
+  region->setMessageLength(512);
+
   return region;
 }
 

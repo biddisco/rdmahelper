@@ -72,11 +72,12 @@ public:
    //! \param  completionQ Completion queue for both send and receive operations.
    //! \throws RdmaError.
 
-   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ) :
+   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ, RdmaRegisteredMemoryPoolPtr pool) :
       RdmaConnection(cmId, domain, completionQ, completionQ)
    {
       createRegions(domain);
       _completionQ = completionQ;
+      _memoryPool = pool;
       _uniqueId = (uint64_t)-1;
       _numRecvBlocks = 0;
       _sizeBlock = 512;
@@ -94,9 +95,14 @@ public:
 
    int makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ);
 
+   void setMemoryPoold(RdmaRegisteredMemoryPoolPtr pool)
+   {
+     this->_memoryPool = pool;
+   }
+
    //! JB. Gets a memory region from the pinned memory pool
    //! throws runtime_error if no free blocks are available.
-   RdmaMemoryRegion * getFreeRegion(RdmaProtectionDomainPtr protectionDomain=NULL);
+   RdmaMemoryRegion * getFreeRegion();
 
 
    //! \brief  Get completion queue used for both send and receive operations.
@@ -250,6 +256,8 @@ private:
 
    //! Completion queue.
    RdmaCompletionQueuePtr _completionQ;
+
+   RdmaRegisteredMemoryPoolPtr _memoryPool;
 
    //! Unique id to identify the client.
    uint64_t _uniqueId;

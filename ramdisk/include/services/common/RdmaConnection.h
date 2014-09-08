@@ -159,10 +159,118 @@ public:
    //! \return Work request id for the posted operation.
    //! \throws RdmaError.
 
-   uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled = false)
-   {
-      return postSend(region, signaled, false, 0);
+   uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData);
+
+   //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
+   //! \param  reqID is the request ID for the requested operation
+   //! \param  remoteKey Key of remote memory region.
+   //! \param  remoteAddr Address of remote memory region.
+   //! \param  localKey Key of local memory region.
+   //! \param  localAddr Address of local memory region
+   //! \param  length is the size of the transfer
+   //! \return error status for the posted operation.
+   //!
+
+int
+postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
+                                             uint32_t localKey,  uint64_t localAddr,
+                                             ssize_t length)
+{
+   // Build scatter/gather element for inbound message.
+   struct ibv_send_wr *badRequest;
+   struct ibv_sge read_sge;
+   read_sge.addr = localAddr;
+   read_sge.length = length;
+   read_sge.lkey = localKey;
+
+   // Build a send work request.
+   struct ibv_send_wr send_wr;
+   memset(&send_wr, 0, sizeof(send_wr));
+   send_wr.next = NULL;
+   send_wr.sg_list = &read_sge;
+   send_wr.num_sge = 1;
+   send_wr.opcode = IBV_WR_RDMA_READ;
+   send_wr.send_flags = IBV_SEND_SIGNALED; // Force completion queue to be posted with result.
+   send_wr.wr_id = reqID;
+   send_wr.wr.rdma.remote_addr = remoteAddr;
+   send_wr.wr.rdma.rkey = remoteKey;
+
+   // Post a send to read data.
+   ++_totalReadPosted;
+    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
+   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Read wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
+   return err;
+}
+
+   //! \brief  Post a rdma write operation to a remote memory region from the specified memory region.
+   //! \param  reqID is the request ID for the requested operation
+   //! \param  remoteKey Key of remote memory region.
+   //! \param  remoteAddr Address of remote memory region.
+   //! \param  localKey Key of local memory region.
+   //! \param  localAddr Address of local memory region
+   //! \param  length is the size of the transfer
+   //! \param  flags are 0 or IBV_SEND_SIGNALED typically
+   //! \return error status for the posted operation.
+   //!
+int
+postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
+                                             uint32_t localKey,  uint64_t localAddr,
+                                             ssize_t length, int flags)
+{
+   // Build scatter/gather element for inbound message.
+   struct ibv_send_wr *badRequest;
+   struct ibv_sge read_sge;
+   read_sge.addr = localAddr;
+   read_sge.length = length;
+   read_sge.lkey = localKey;
+
+   // Build a send work request.
+   struct ibv_send_wr send_wr;
+   memset(&send_wr, 0, sizeof(send_wr));
+   send_wr.next = NULL;
+   send_wr.sg_list = &read_sge;
+   send_wr.num_sge = 1;
+   send_wr.opcode = IBV_WR_RDMA_WRITE;
+   send_wr.send_flags = flags; //if IBV_SEND_SIGNALED, Force completion queue to be posted with result.
+   send_wr.wr_id = reqID;
+   send_wr.wr.rdma.remote_addr = remoteAddr;
+   send_wr.wr.rdma.rkey = remoteKey;
+
+   // Post a send to read data.
+   ++_totalReadPosted;
+   int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
+   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Write wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
+   return err;
+}
+
+uint64_t
+postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
+{
+   // Build scatter/gather element for inbound message.
+   struct ibv_sge recv_sge;
+   recv_sge.addr =   address;
+   recv_sge.length = length;
+   recv_sge.lkey = region->getLocalKey();
+
+   // Build receive work request.
+   struct ibv_recv_wr recv_wr;
+   memset(&recv_wr, 0, sizeof(recv_wr));
+   recv_wr.next = NULL;
+   recv_wr.sg_list = &recv_sge;
+   recv_wr.num_sge = 1;
+   recv_wr.wr_id = (uint64_t)region.get();
+   ++_totalRecvPosted;
+   struct ibv_recv_wr *badRequest;
+   int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
+   if (err!=0) {
+     throw(RdmaError(err, "postSendNoImmed failed"));
    }
+   std::cout << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address << std::endl;
+   _waitingRecvPosted++;
+   LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
+   return recv_wr.wr_id;
+}
+
 /*
    //! \brief  Post a send with immediate data operation using the specified memory region.
    //! \param  region Memory region that contains data to send.
@@ -258,90 +366,8 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
    //! \throws RdmaError.
 
    uint64_t postRdmaRead(RdmaMemoryRegionPtr region, uint64_t remoteAddr, uint32_t remoteKey);
-
-   //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
-   //! \param  reqID is the request ID for the requested operation
-   //! \param  remoteKey Key of remote memory region.
-   //! \param  remoteAddr Address of remote memory region.
-   //! \param  localKey Key of local memory region.
-   //! \param  localAddr Address of local memory region
-   //! \param  length is the size of the transfer
-   //! \return error status for the posted operation.
-   //! 
-
 */
-int
-postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
-                                             uint32_t localKey,  uint64_t localAddr,
-                                             ssize_t length)
-{
-   // Build scatter/gather element for inbound message.
-   struct ibv_send_wr *badRequest;
-   struct ibv_sge read_sge;
-   read_sge.addr = localAddr;
-   read_sge.length = length;
-   read_sge.lkey = localKey;
 
-   // Build a send work request.
-   struct ibv_send_wr send_wr;
-   memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
-   send_wr.sg_list = &read_sge;
-   send_wr.num_sge = 1;
-   send_wr.opcode = IBV_WR_RDMA_READ;
-   send_wr.send_flags = IBV_SEND_SIGNALED; // Force completion queue to be posted with result.
-   send_wr.wr_id = reqID;
-   send_wr.wr.rdma.remote_addr = remoteAddr;
-   send_wr.wr.rdma.rkey = remoteKey;
-
-   // Post a send to read data.
-   ++_totalReadPosted;
-   ++_waitingSendPosted;
-   int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   LOG_CIOS_TRACE_MSG(_tag << "posting Read wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
-   return err;
-}
-
-   //! \brief  Post a rdma write operation to a remote memory region from the specified memory region.
-   //! \param  reqID is the request ID for the requested operation
-   //! \param  remoteKey Key of remote memory region.
-   //! \param  remoteAddr Address of remote memory region.
-   //! \param  localKey Key of local memory region.
-   //! \param  localAddr Address of local memory region
-   //! \param  length is the size of the transfer
-   //! \param  flags are 0 or IBV_SEND_SIGNALED typically
-   //! \return error status for the posted operation.
-   //!
-int
-postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
-                                             uint32_t localKey,  uint64_t localAddr,
-                                             ssize_t length, int flags)
-{
-   // Build scatter/gather element for inbound message.
-   struct ibv_send_wr *badRequest;
-   struct ibv_sge read_sge;
-   read_sge.addr = localAddr;
-   read_sge.length = length;
-   read_sge.lkey = localKey;
-
-   // Build a send work request.
-   struct ibv_send_wr send_wr;
-   memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
-   send_wr.sg_list = &read_sge;
-   send_wr.num_sge = 1;
-   send_wr.opcode = IBV_WR_RDMA_WRITE;
-   send_wr.send_flags = flags; //if IBV_SEND_SIGNALED, Force completion queue to be posted with result.
-   send_wr.wr_id = reqID;
-   send_wr.wr.rdma.remote_addr = remoteAddr;
-   send_wr.wr.rdma.rkey = remoteKey;
-
-   // Post a send to read data.
-   ++_totalReadPosted;
-   int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   LOG_CIOS_TRACE_MSG(_tag << "posting Write wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
-   return err;
-}
 /*
 int
 postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
@@ -425,33 +451,6 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
      return recv_wr.wr_id;
   }
 */
-  uint64_t
-  postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
-  {
-     // Build scatter/gather element for inbound message.
-     struct ibv_sge recv_sge;
-     recv_sge.addr =   address;
-     recv_sge.length = length;
-     recv_sge.lkey = region->getLocalKey();
-
-     // Build receive work request.
-     struct ibv_recv_wr recv_wr;
-     memset(&recv_wr, 0, sizeof(recv_wr));
-     recv_wr.next = NULL;
-     recv_wr.sg_list = &recv_sge;
-     recv_wr.num_sge = 1;
-     recv_wr.wr_id = (uint64_t)region.get();
-     ++_totalRecvPosted;
-     struct ibv_recv_wr *badRequest;
-     int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
-     if (err!=0) {
-       throw(RdmaError(err, "postSendNoImmed failed"));
-     }
-     std::cout << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address << std::endl;
-     _waitingRecvPosted++;
-     LOG_DEBUG_MSG(_tag << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
-     return recv_wr.wr_id;
-  }
 /*
    //! \brief  Post a receive operation using the specified memory region.
    //! \param  region Memory region to put received data.
@@ -601,8 +600,6 @@ protected:
    //! \brief  Destroy resources owned by object.
    //! \return Nothing.
    void destroy(void);
-
-   uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData);
 
    //! \brief  Post a work request to the send queue.
    //! \param  request Pointer to send work request.
