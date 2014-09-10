@@ -178,8 +178,8 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    memset(&qpAttributes, 0, sizeof qpAttributes);
    qpAttributes.cap.max_send_wr = maxWorkRequests;
    qpAttributes.cap.max_recv_wr = maxWorkRequests;
-   qpAttributes.cap.max_send_sge = 10;
-   qpAttributes.cap.max_recv_sge = 10;
+   qpAttributes.cap.max_send_sge = 6;
+   qpAttributes.cap.max_recv_sge = 6;
    qpAttributes.qp_context = this; // Save the pointer this object.
    qpAttributes.sq_sig_all = signalSendQueue;
    qpAttributes.qp_type = IBV_QPT_RC;
