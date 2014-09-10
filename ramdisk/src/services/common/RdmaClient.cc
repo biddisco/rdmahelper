@@ -151,27 +151,6 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
 /*---------------------------------------------------------------------------*/
 RdmaMemoryRegion * RdmaClient::getFreeRegion()
 {
-  /*
-  if (!this->_pinned_memory_pool) {
-    this->_pinned_memory_pool = std::shared_ptr<pinned_pool>(new pinned_pool(512,512));
-    pinned_allocator_malloc_free::setProtectionDomain(this->_domain);
-  }
-  RdmaMemoryRegionPtr region = this->_pinned_memory_pool->create();
-  if (region==NULL) {
-    LOG_ERROR_MSG("Failed to allocate a pinned memory region");
-//    throw std::bad_alloc("Failed to allocate a pinned memory region");
-  }
-  */
-  /*
-  RdmaMemoryRegion *region = new RdmaMemoryRegion();
-  if (protectionDomain) {
-    region->allocate(protectionDomain,512);
-  }
-  else {
-    region->allocate(this->_domain, 512);
-  }
-  region->setMessageLength(512);
-*/
   RdmaMemoryRegion *region = this->_memoryPool->create();
   region->setMessageLength(512);
 

@@ -121,7 +121,7 @@ class RdmaRegisteredMemoryPool : public boost::object_pool<RdmaMemoryRegion, fix
     // can't overload 'construct' method by only changing return type (RdmaMemoryRegion) ,
     // so use 'create' instead to return a smart pointer
     element_type *create() {
-      RdmaMemoryRegion *region = superclass::construct();
+      element_type *region = superclass::construct();
       std::cout << "Created region from pool with address " << (uintptr_t)region << std::endl;
       if (this->_registered_Blocks.find(region)==this->_registered_Blocks.end()) {
         region->allocate(this->_protectionDomain, 512);
