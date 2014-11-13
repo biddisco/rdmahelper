@@ -139,9 +139,6 @@ RdmaConnection::init(void)
    _totalSendPosted = 0;
    _totalReadPosted = 0;
    _totalWritePosted = 0;
-   _waitingRecvPosted = 0;
-   _waitingSendPosted = 0;
-
    return;
 }
 
@@ -386,6 +383,7 @@ RdmaConnection::connect(void)
 int
 RdmaConnection::disconnect(bool initiate)
 {
+LOG_DEBUG_MSG("RdmaConnection::disconnect");
    // Disconnect the connection.
    int err = rdma_disconnect(_cmId);
    if (err != 0) {
@@ -471,7 +469,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
    // use address for wr_id
    send_wr.wr_id = (uint64_t)region.get();
 
-   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << send_wr.wr_id << " with Length " << send_sge.length
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << (uintptr_t)send_wr.wr_id << " with Length " << send_sge.length
        << " " << std::setw(8) << std::setfill('0') << std::hex << send_sge.addr);
    // Post a send for outbound message.
    ++_totalSendPosted;

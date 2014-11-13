@@ -24,6 +24,7 @@
 //! \file  RdmaClient.cc
 //! \brief Methods for bgcios::RdmaClient class.
 
+//#include <hpx/config.hpp>
 #include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaClient.h>
 #include <ramdisk/include/services/common/RdmaError.h>
@@ -32,7 +33,6 @@
 #include <chrono>
 #include <thread>
 
-#include "ramdisk/include/services/common/RdmaRegisteredMemoryPool.h"
 
 using namespace bgcios;
 
@@ -149,11 +149,19 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
 }
 
 /*---------------------------------------------------------------------------*/
-RdmaMemoryRegion * RdmaClient::getFreeRegion()
+RdmaMemoryRegionPtr RdmaClient::getFreeRegion(size_t size)
 {
-  RdmaMemoryRegion *region = this->_memoryPool->create();
-  region->setMessageLength(512);
+  RdmaMemoryRegionPtr region = this->_memoryPool->allocate(size);
+  if (!region) {
+    LOG_ERROR_MSG(_tag << "Error creating free memory region");
+  }
+  region->setMessageLength(size);
 
   return region;
 }
 
+/*---------------------------------------------------------------------------*/
+void RdmaClient::releaseRegion(RdmaMemoryRegion *region)
+{
+ this->_memoryPool->deallocate(region);
+}

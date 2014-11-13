@@ -28,7 +28,7 @@
 #define COMMON_RDMACONNECTION_H
 
 // Includes
-//#include <ramdisk/include/services/common/Cioslog.h>
+#include "RdmaConnectionBase.h"
 #include "RdmaMemoryRegion.h"
 #include "RdmaProtectionDomain.h"
 #include "RdmaCompletionQueue.h"
@@ -47,7 +47,7 @@ namespace bgcios
 
 //! Connection for RDMA operations with a remote partner.
 
-class RdmaConnection
+class RdmaConnection : public RdmaConnectionBase
 {
 public:
 
@@ -244,7 +244,7 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 }
 
 uint64_t
-postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
+postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_sge recv_sge;
@@ -265,9 +265,13 @@ postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length
    if (err!=0) {
      throw(RdmaError(err, "postSendNoImmed failed"));
    }
-   std::cout << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address << std::endl;
-   _waitingRecvPosted++;
-   LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
+   if (expected) {
+     _waitingExpectedRecvPosted++;
+   }
+   else {
+     _waitingUnexpectedRecvPosted++;
+   }
+   LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << std::hex << (uintptr_t)recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
    return recv_wr.wr_id;
 }
 
@@ -458,17 +462,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 
    int postRecv(RdmaMemoryRegionPtr region);
 */
-   //! \brief  Decrease waiting receive counter
-   //! \return the value of the waiting receive counter after decrement
-  uint32_t decrementWaitingRecv() { return --_waitingRecvPosted; }
-  uint32_t decrementWaitingSend() { return --_waitingSendPosted; }
-
-   //! \brief  Get the waiting receive counter
-   //! \return the value of the waiting receive counter after decrement
-   uint32_t getNumWaitingRecv() { return _waitingRecvPosted; }
-   uint32_t getNumWaitingSend() { return _waitingSendPosted; }
-
-   //! \brief  Get the rdma connection management identifier for the connection.
+  //! \brief  Get the rdma connection management identifier for the connection.
    //! \return Pointer to rdma cm identifier structure.
 
    struct rdma_cm_id * getCmId(void) const { return _cmId; }
@@ -637,10 +631,6 @@ protected:
 
    //! Total number of rdma write operations posted to queue pair.
    uint64_t _totalWritePosted;
-
-   //! The number of outstanding receives in the queue
-   uint32_t _waitingRecvPosted;
-   uint32_t _waitingSendPosted;
 
 };
 

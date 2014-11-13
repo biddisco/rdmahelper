@@ -118,6 +118,23 @@ class RdmaRegisteredMemoryPool : public boost::object_pool<RdmaMemoryRegion, fix
      }
    }
 
+  void free(element_type *region)
+  {
+    std::cout << "Freeing region from pool with address " << (uintptr_t)region << std::endl;
+
+    memset(region->getAddress(),0,512);
+
+    std::cout << "wiped it " << (uintptr_t)region << " key " << region->getLocalKey() << " at address " << region->getAddress() << std::endl;
+    superclass::free(region);
+
+    std::cout << "freed  region " << (uintptr_t)region << " key " << region->getLocalKey() << " at address " << region->getAddress() << std::endl;
+
+    memset(region->getAddress(),0,512);
+
+    std::cout << "freed  region (and wiped it)" << (uintptr_t)region << " key " << region->getLocalKey() << " at address " << region->getAddress() << std::endl;
+
+  }
+
     // can't overload 'construct' method by only changing return type (RdmaMemoryRegion) ,
     // so use 'create' instead to return a smart pointer
     element_type *create() {
@@ -125,7 +142,7 @@ class RdmaRegisteredMemoryPool : public boost::object_pool<RdmaMemoryRegion, fix
       std::cout << "Created region from pool with address " << (uintptr_t)region << std::endl;
       if (this->_registered_Blocks.find(region)==this->_registered_Blocks.end()) {
         region->allocate(this->_protectionDomain, 512);
-        std::cout << "allocated 512 bytes in region space" << std::endl;
+        std::cout << "allocated 512 bytes in region space for region " << (uintptr_t)region << " key " << region->getLocalKey() << " at address " << region->getAddress() << std::endl;
         this->_registered_Blocks.insert(region);
         region->setMessageLength(512);
       }

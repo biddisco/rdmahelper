@@ -135,6 +135,7 @@ private:
 
 };
 
+
 //! Smart pointer for RdmaCompletionQueue object.
 typedef std::shared_ptr<RdmaCompletionQueue> RdmaCompletionQueuePtr;
 

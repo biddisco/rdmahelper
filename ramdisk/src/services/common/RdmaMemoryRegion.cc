@@ -25,6 +25,13 @@
 //! \file  RdmaMemoryRegion.cc
 //! \brief Methods for bgcios::RdmaMemoryRegion class.
 // Includes
+#include "stdio.h"
+#include "stdlib.h"
+    #include <ostream>
+    #include <sstream>
+    #include <memory>
+    #include <string>
+    #include <boost/log/trivial.hpp>
 #include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaMemoryRegion.h>
 #include <ramdisk/include/services/common/RdmaDevice.h>
@@ -35,6 +42,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <bitset>
+
 //#include <stdint.h>
 
 #include <mutex>
@@ -59,14 +67,13 @@ struct bgvrnic_mr {
 //LOG_DECLARE_FILE("cios.common");
 /*---------------------------------------------------------------------------*/
 RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
-    const void *buffer, const uint64_t length) {
+    const void *buffer, const uint64_t length)
+{
   _messageLength = length;
   _frags = -1; // frags = -1 is a special flag we use to tell destructor not to deallocate the memory on close
   _fd = -1;
   int accessFlags = _IBV_ACCESS_LOCAL_WRITE | _IBV_ACCESS_REMOTE_WRITE
       | _IBV_ACCESS_REMOTE_READ;
-
-  //  void *buffer2 = ::mmap(NULL, length, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 
   _region = ibv_reg_mr(pd->getDomain(), (void*) buffer, _messageLength,
       (ibv_access_flags) accessFlags);
@@ -85,7 +92,8 @@ RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
 
 /*---------------------------------------------------------------------------*/
 int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
-  // Obtain lock to serialize getting storage for memory regions.  This makes it more likely that we'll get contiguous physical pages
+  // Obtain lock to serialize getting storage for memory regions.
+  // This makes it more likely that we'll get contiguous physical pages
   // for the memory region (maybe someday we'll be able to use huge pages).
   std::lock_guard < std::mutex > lock(alloc_mutex);
 
@@ -120,19 +128,18 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
     // Register the storage as a memory region.
     int accessFlags = _IBV_ACCESS_LOCAL_WRITE | _IBV_ACCESS_REMOTE_WRITE
         | _IBV_ACCESS_REMOTE_READ;
-    std::bitset < sizeof(int) * 8 > bits(accessFlags);
     regionList[attempt] = ibv_reg_mr(pd->getDomain(), buffer, length,
         (ibv_access_flags) accessFlags);
 
     if (regionList[attempt] == NULL) {
       int err = errno;
       LOG_ERROR_MSG(
-          "error registering ibv_reg_mr error message with flags : " << bits
+          "error registering ibv_reg_mr error message : "
               << " " << err << " " << bgcios::errorString(err));
       return ENOMEM;
     } else {
       LOG_DEBUG_MSG(
-          "OK registering ibv_reg_mr with flags : " << bits << " " << length);
+          "OK registering ibv_reg_mr with flags : " << " " << length);
     }
 
     memoryRegion = regionList[attempt];
@@ -195,7 +202,7 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
     _frags = 1;
   }
 
-  LOG_CIOS_DEBUG_MSG("allocated memory region with local key " << getLocalKey() << " at address " << getAddress() << " with length " << getLength());
+  LOG_CIOS_DEBUG_MSG("allocated memory region " << this << " with local key " << getLocalKey() << " at address " << getAddress() << " with length " << getLength());
   CIOSLOGRDMA_REQ(BGV_RDMA_REG, _region, _frags, _fd);
   return 0;
 }
@@ -305,10 +312,10 @@ int RdmaMemoryRegion::allocateFromBgvrnicDevice(RdmaProtectionDomainPtr pd,
 /*---------------------------------------------------------------------------*/
 int RdmaMemoryRegion::release(void) {
   if (_region != NULL) {
-    CIOSLOGRDMA_REQ(BGV_RDMA_RMV, _region, _frags, _fd);
-    //      LOG_CIOS_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length " << length);
+//    CIOSLOGRDMA_REQ(BGV_RDMA_RMV, _region, _frags, _fd);
     void *buffer = getAddress();
     uint32_t length = getLength();
+    LOG_CIOS_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length 0x" << length);
     ibv_dereg_mr(_region);
     // _frags == -1 is special to tell us not to release the memory, just unregister it
     if (_frags != -1) {

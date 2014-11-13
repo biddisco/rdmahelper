@@ -10,17 +10,26 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/add_definition.cmake)
 #------------------------------------------------------------------------------
 # Boost 
 #------------------------------------------------------------------------------
-find_package(Boost 1.50.0  REQUIRED system regex date_time serialization program_options log thread filesystem)
+find_package(Boost 1.50.0  REQUIRED 
+   regex date_time serialization 
+  program_options filesystem log log_setup system thread 
+)
 include_directories(${Boost_INCLUDE_DIR})
 
 #------------------------------------------------------------------------------
+# HPX 
+#------------------------------------------------------------------------------
+#find_package(HPX REQUIRED CONFIG)
+#include_directories(${HPX_INCLUDE_DIRS})
+#message("The HPX include dir is ${HPX_INCLUDE_DIRS}")
+
+##------------------------------------------------------------------------------
 # Logging
 #------------------------------------------------------------------------------
 option(RDMAHELPER_ENABLE_LOGGING "Enable logging" ON)
 if (RDMAHELPER_ENABLE_LOGGING)
   option(RDMAHELPER_USE_BOOST_LOG "Use boost log library (if off, use Log4CXX)" ON)
   if (RDMAHELPER_USE_BOOST_LOG)
-    add_definitions(-DRDMAHELPER_BOOST_LOGGING)
     add_config_define(RDMAHELPER_BOOST_LOGGING)
   else()
     #------------------------------------------------------------------------------
@@ -28,44 +37,48 @@ if (RDMAHELPER_ENABLE_LOGGING)
     #------------------------------------------------------------------------------
     set(RDMAHELPER_USE_LOG4CXX 1)
     find_package(Log4Cxx)
-    add_definitions(-DRDMAHELPER_LOG4CXX_LOGGING)
     add_config_define(RDMAHELPER_LOG4CXX_LOGGING)
     if(NOT Log4CXX_FOUND)
-      add_definitions(-DRDMAHELPER_DISABLE_LOGGING)
       add_config_define(RDMAHELPER_DISABLE_LOGGING)
     endif()
   endif()
+else()
+  add_config_define(RDMAHELPER_DISABLE_LOGGING)
 endif()
-
-#------------------------------------------------------------------------------
-# OFED verbs stack
-#------------------------------------------------------------------------------
-find_package(IB_VERBS REQUIRED)
-include_directories(${IB_VERBS_INCLUDE_DIRS})
-
-#------------------------------------------------------------------------------
-# RDMA_CM
-#------------------------------------------------------------------------------
-find_package(RDMA_CM REQUIRED)
-include_directories(${RDMA_CM_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------
 # Detect Platform to setup special flags for specific machines
 #------------------------------------------------------------------------------
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DetectMachine.cmake)
 
-if(BGQ OR BGAS)
-  message("Setting BGQ/BGAS flags")
-  add_definitions(-DBGQ_BGAS)
+#------------------------------------------------------------------------------
+# verbs support
+#------------------------------------------------------------------------------
+if(NOT BGQ)
+    #------------------------------------------------------------------------------
+    # OFED verbs stack
+    #------------------------------------------------------------------------------
+    find_package(IB_VERBS REQUIRED)
+    include_directories(${IB_VERBS_INCLUDE_DIRS})
+    
+    #------------------------------------------------------------------------------
+    # RDMA_CM
+    #------------------------------------------------------------------------------
+    find_package(RDMA_CM REQUIRED)
+    include_directories(${RDMA_CM_INCLUDE_DIRS})
+else()
+    add_config_define(RDMAHELPER_BGQ_CNVERBS)
+    # this can be safely hadcoded
+    include_directories("/bgsys/drivers/V1R2M2/ppc64/spi/include/kernel")
 endif()
-
+    
 #------------------------------------------------------------------------------
 # Definitions 
 #------------------------------------------------------------------------------
-add_definitions(${rdmahelper_DEFINITIONS})
+#add_definitions(${rdmahelper_DEFINITIONS})
 
 ################################################################################
-# Configure the header to include all compile definitions
+# Configure the header that includes all compile definitions
 ################################################################################
 get_property(PROJECT_CONFIG_DEFINITIONS_VAR GLOBAL PROPERTY PROJECT_CONFIG_DEFINITIONS)
 
@@ -81,22 +94,36 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/config_defines.hpp.in"
                "${CMAKE_CURRENT_BINARY_DIR}/rdmahelper_defines.h"
                @ONLY)
 
+#
+# to #include "rdmahelper_defines.h"
+#
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 
 #------------------------------------------------------------------------------
 # RDMA Helper library 
 #------------------------------------------------------------------------------
 set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/src/services/common)
 
-set(BGCIOS_SRC
-  ${BGCIOS_DIR}/RdmaMemoryRegion.cc
-  ${BGCIOS_DIR}/RdmaDevice.cc
-  ${BGCIOS_DIR}/RdmaCompletionChannel.cc
-  ${BGCIOS_DIR}/RdmaCompletionQueue.cc
-  ${BGCIOS_DIR}/RdmaProtectionDomain.cc
-  ${BGCIOS_DIR}/RdmaConnection.cc
-  ${BGCIOS_DIR}/RdmaClient.cc
-  ${BGCIOS_DIR}/RdmaServer.cc
-)
+if (NOT BGQ)
+    set(BGCIOS_SRC
+      ${BGCIOS_DIR}/RdmaMemoryRegion.cc
+      ${BGCIOS_DIR}/RdmaDevice.cc
+      ${BGCIOS_DIR}/RdmaCompletionChannel.cc
+      ${BGCIOS_DIR}/RdmaCompletionQueue.cc
+      ${BGCIOS_DIR}/RdmaProtectionDomain.cc
+      ${BGCIOS_DIR}/RdmaConnection.cc
+      ${BGCIOS_DIR}/RdmaClient.cc
+      ${BGCIOS_DIR}/RdmaServer.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/include/services/common/memory_pool.cpp 
+    )
+else()
+    set(BGCIOS_SRC
+      ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/include/services/common/memory_pool.cpp 
+      ${BGCIOS_DIR}/CNKMemoryRegion.cc
+      ${BGCIOS_DIR}/CNKClient.cc
+    )
+endif()
  
 set(BGCIOS_includes
   ${CMAKE_CURRENT_SOURCE_DIR}

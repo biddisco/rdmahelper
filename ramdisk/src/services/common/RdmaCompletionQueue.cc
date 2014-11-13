@@ -35,6 +35,7 @@
 //#include <ramdisk/include/services/common/Cioslog.h>
 
 using namespace bgcios;
+const int RdmaCompletionQueue::MaxQueueSize;
 
 //LOG_DECLARE_FILE("cios.common");
 

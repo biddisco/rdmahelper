@@ -31,6 +31,7 @@
 #include "rdmahelper_logging.h"
 #include <errno.h>
 #include <iostream>
+#include <sstream>
 
 using namespace bgcios;
 
@@ -65,6 +66,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
       // special action
       //
       if (strstr(device.c_str(), "bgvrnic")) {
+        LOG_DEBUG_MSG("Setting bgvrnic device flag for BGQ IO link operation");
         RdmaDevice::bgvrnic_device = true;
       }
          break;

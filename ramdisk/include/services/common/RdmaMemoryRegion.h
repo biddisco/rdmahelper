@@ -29,7 +29,6 @@
 
 // Includes
 #include <ramdisk/include/services/common/RdmaProtectionDomain.h>
-#include <ramdisk/include/services/common/SystemLock.h>
 #include <infiniband/verbs.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -81,7 +80,6 @@ public:
 
     // create a memory region object by registering an existing address buffer
     RdmaMemoryRegion(RdmaProtectionDomainPtr pd, const void *buffer, const uint64_t length);
-
 
    ~RdmaMemoryRegion()
    {
@@ -173,7 +171,7 @@ private:
    //! Length of a message in the memory region.
    uint32_t _messageLength;
 
-   //! MaximTum number of times to try allocating a memory region to reduce physical page fragmentation.
+   //! Maximum number of times to try allocating a memory region to reduce physical page fragmentation.
    static const uint32_t MaxAllocateAttempts = 16;
 };
 

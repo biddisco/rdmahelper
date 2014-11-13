@@ -31,7 +31,7 @@
 #include "RdmaConnection.h"
 #include "RdmaMemoryRegion.h"
 #include <memory>
-#include <ramdisk/include/services/common/RdmaRegisteredMemoryPool.h>
+#include "ramdisk/include/services/common/memory_pool.hpp"
 
 namespace bgcios
 {
@@ -72,7 +72,7 @@ public:
    //! \param  completionQ Completion queue for both send and receive operations.
    //! \throws RdmaError.
 
-   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ, RdmaRegisteredMemoryPoolPtr pool) :
+   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ, memory_poolPtr pool) :
       RdmaConnection(cmId, domain, completionQ, completionQ)
    {
       createRegions(domain);
@@ -95,15 +95,17 @@ public:
 
    int makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ);
 
-   void setMemoryPoold(RdmaRegisteredMemoryPoolPtr pool)
+   void setMemoryPoold(memory_poolPtr pool)
    {
      this->_memoryPool = pool;
    }
 
    //! JB. Gets a memory region from the pinned memory pool
    //! throws runtime_error if no free blocks are available.
-   RdmaMemoryRegion * getFreeRegion();
+   RdmaMemoryRegionPtr getFreeRegion(size_t size=0);
 
+   //! JB. release a region of memory back to the pool
+   void releaseRegion(RdmaMemoryRegion *region);
 
    //! \brief  Get completion queue used for both send and receive operations.
    //! \return Completion queue pointer.
@@ -257,7 +259,7 @@ private:
    //! Completion queue.
    RdmaCompletionQueuePtr _completionQ;
 
-   RdmaRegisteredMemoryPoolPtr _memoryPool;
+   memory_poolPtr _memoryPool;
 
    //! Unique id to identify the client.
    uint64_t _uniqueId;
