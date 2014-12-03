@@ -17,6 +17,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
 
   // if we have not exceeded our max size, allocate a new block
   if (free_list_.empty() && BlockList.size()<max_chunks_) {
+    H5FDdsmDebugLevel(5,"Creating new Block as free list is empty but max chunks not reached");
     AllocateRegisteredBlock(length);
   }
   // make sure the deque is not empty, wait on condition
@@ -32,7 +33,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
   RdmaMemoryRegionPtr buffer = free_list_.top();
   free_list_.pop();
 
-  H5FDdsmDebugLevel(5,"Popping Block "
+  H5FDdsmDebugLevel(5,"Popping Block"
       << " region  "   << std::setfill('0') << std::setw(12) << std::hex << (pointer)buffer.get()
       << " buffer  "   << std::setfill('0') << std::setw(12) << std::hex << (pointer)buffer->getAddress()
       << " length  0x" << std::setfill('0') << std::setw(12) << std::hex << length
@@ -57,7 +58,8 @@ void memory_pool::deallocate(RdmaMemoryRegion *region)
   // release one reference
   this->BufferReferenceCount--;
 
-   H5FDdsmDebugLevel(5,"Pushing Block "
+   H5FDdsmDebugLevel(5,"Pushing Block"
+      << " region  " << std::setfill('0') << std::setw(12) << std::hex << (pointer)region
       << " buffer  " << std::setfill('0') << std::setw(12) << std::hex << (pointer)r->getAddress()
       << " size is " << std::dec << free_list_.size() << " refcount " << this->BufferReferenceCount);
   
@@ -92,6 +94,9 @@ RdmaMemoryRegionPtr memory_pool::AllocateRegisteredBlock(int length)
   this->BlockList[region.get()] = region;
   H5FDdsmDebugLevel(6,
       "Adding registered block to buffer " << "0x" << std::setfill('0') << std::setw(12) << std::hex << (pointer)region->getAddress());
+
+  // if anyone was waiting on the free list lock, then give it
+  this->memBuffer_cond.notify_one();
 
   //
   // save the memory registration info
