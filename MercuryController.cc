@@ -40,6 +40,8 @@
 
 #include "cscs_messages.h"
 
+#define PREPOSTS 2
+
 using namespace bgcios::stdio;
 
 /*
@@ -186,6 +188,17 @@ void MercuryController::freeRegion(RdmaMemoryRegion *region)
 }
 
 /*---------------------------------------------------------------------------*/
+int MercuryController::refill_client_receives()
+{
+  // make sure all clients have a pre-posted receive in their queues
+  std::for_each(_clients.begin(), _clients.end(),
+    [](MercuryController::ClientMapPair _client) {
+      _client.second->refill_preposts(PREPOSTS);
+    }
+  );
+}
+
+/*---------------------------------------------------------------------------*/
 void MercuryController::eventMonitor(int Nevents)
 {
   const int eventChannel = 0;
@@ -254,12 +267,6 @@ void MercuryController::eventMonitor(int Nevents)
     }
   }
 }
-/*---------------------------------------------------------------------------*/
-template<typename T>
-struct NullDeleter {
-  void operator()(T*) {}
-};
-
 
 /*---------------------------------------------------------------------------*/
 void MercuryController::eventChannelHandler(void)
@@ -309,12 +316,7 @@ void MercuryController::eventChannelHandler(void)
          // Add completion queue to completion channel.
          _completionChannel->addCompletionQ(completionQ);
 
-         // Post a receive to get the first message.
-         RdmaMemoryRegionPtr region = client->getFreeRegion(512);
-
-         LOG_DEBUG_MSG("Pre-Posting a receive using region wr_id " << std::hex << (uintptr_t)(region.get()) );
-
-         client->postRecvRegionAsID(region, (uint64_t)region->getAddress(), region->getLength(), false);
+         this->refill_client_receives();
 
          // Accept the connection from the new client.
          err = client->accept();
@@ -349,8 +351,8 @@ void MercuryController::eventChannelHandler(void)
          uint32_t qp = _rdmaListener->getEventQpNum();
          RdmaClientPtr client = _clients.get(qp);
          RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
-         while (client->getNumWaitingExpectedRecv()>0 || client->getNumWaitingSend()>0) {
-           LOG_ERROR_MSG("@@@ ERROR there are uncompleted events NumWaitingRecv " << client->getNumWaitingExpectedRecv() << " NumWaitingSend " << client->getNumWaitingSend());
+         while (client->getNumReceives()>0 /*|| client->getNumWaitingSend()>0*/) {
+//           LOG_ERROR_MSG("@@@ ERROR there are uncompleted events NumWaitingRecv " << client->getNumWaitingRecv() << " NumWaitingSend " << client->getNumWaitingSend());
 //           this->eventMonitor(1,false);
 //           LOG_ERROR_MSG("$$$ ERROR there are uncompleted events NumWaitingRecv " << client->getNumWaitingRecv() << " NumWaitingSend " << client->getNumWaitingSend());
              while (completionQ->removeCompletions() != 0) {

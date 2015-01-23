@@ -106,6 +106,10 @@ public:
 
    void freeRegion(RdmaMemoryRegion *region);
 
+   int num_clients() { return _clients.size(); }
+
+   int refill_client_receives();
+
 private:
 
    void eventChannelHandler(void);
