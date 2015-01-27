@@ -104,7 +104,7 @@ int MercuryController::startup() {
     try {
       LOG_DEBUG_MSG("Looking for SLURM_PROCID");
       const char *val = getenv("SLURM_PROCID");
-      rank = boost::lexical_cast<int>(val);
+      if (val) rank = boost::lexical_cast<int>(val);
     }
     catch (...) {
       LOG_ERROR_MSG("Failed to parse SLURM_PROCID");
