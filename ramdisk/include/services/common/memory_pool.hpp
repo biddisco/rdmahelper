@@ -14,7 +14,7 @@
 //
 #include <atomic>
 #include <stack>
-#include <deque>
+#include <queue>
 #include <mutex>
 #include <vector>
 #include <map>
@@ -35,7 +35,7 @@
 #define H5FDdsmError(m) std::cout << "ERROR " << m << std::endl;
 
 #ifndef RDMAHELPER_LOGGING_H_
-#define LOG_ERROR_MSG(m) std::cout << "ERROR " << m << std::endl;
+  #define LOG_ERROR_MSG(m) std::cout << "ERROR " << m << std::endl;
 #endif
 
 using namespace bgcios;
@@ -119,7 +119,7 @@ struct memory_pool /*: boost::non_copyable */{
   static const uint32_t H5FDdsm_VIRTUAL_DATA_ALIGNMENT = 65536;
   //
   std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> BlockList;
-  std::stack<RdmaMemoryRegionPtr>           free_list_;
+  std::queue<RdmaMemoryRegionPtr>           free_list_;
   std::atomic<int>                          BufferReferenceCount;
   //
   // Referencing for memory blocks and associated registered memory struct

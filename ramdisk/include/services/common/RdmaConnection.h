@@ -32,6 +32,7 @@
 #include "RdmaMemoryRegion.h"
 #include "RdmaProtectionDomain.h"
 #include "RdmaCompletionQueue.h"
+#include "RdmaSharedReceiveQueue.h"
 #include "RdmaError.h"
 #include <inttypes.h>
 #include <rdma/rdma_cma.h>
@@ -73,7 +74,7 @@ public:
    //! \throws RdmaError.
 
    RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
-                  RdmaCompletionQueuePtr recvCompletionQ, bool signalSendQueue = false);
+                  RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue = false);
 
    //! \brief  Default destructor.
 
@@ -243,7 +244,7 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    return err;
 }
 
-uint64_t
+virtual uint64_t
 postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false)
 {
    // Build scatter/gather element for inbound message.
@@ -264,12 +265,6 @@ postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
    if (err!=0) {
      throw(RdmaError(err, "postSendNoImmed failed"));
-   }
-   if (expected) {
-     _waitingExpectedRecvPosted++;
-   }
-   else {
-     _waitingUnexpectedRecvPosted++;
    }
    LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << std::hex << (uintptr_t)recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
    return recv_wr.wr_id;
@@ -566,6 +561,20 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 
    std::string wr_opcode_str(enum ibv_wr_opcode opcode) const;
 
+   //! \brief  Create a shared receive queue :
+   //! this should only be called by a server. Client objects owned by a server will
+   //! have it passed into makepeer
+   int create_srq(RdmaProtectionDomainPtr domain);
+
+   RdmaSharedReceiveQueuePtr SRQ() {
+     return _srq;
+   }
+
+   virtual struct ibv_srq *get_SRQ() {
+     if (_srq==NULL) return NULL;
+     return _srq->get_SRQ();
+   }
+
 protected:
 
    //! \brief  Initialize object to known state.
@@ -590,6 +599,8 @@ protected:
 
    void createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
                  uint32_t maxWorkRequests, bool signalSendQueue);
+
+   RdmaSharedReceiveQueuePtr _srq;
 
    //! \brief  Destroy resources owned by object.
    //! \return Nothing.

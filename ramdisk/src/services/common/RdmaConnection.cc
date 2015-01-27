@@ -83,13 +83,14 @@ RdmaConnection::RdmaConnection(const std::string localAddr, const std::string lo
 }
 
 RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
-                               RdmaCompletionQueuePtr recvCompletionQ, bool signalSendQueue)
+                               RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue)
 {
    // Initialize object to known state.
    init();
 
    // Use the input rdma connection management id.
    _cmId = cmId;
+   _srq  = SRQ;
    memcpy(&_remoteAddress, &(_cmId->route.addr.dst_addr), sizeof(struct sockaddr_in));
 
    // Create a queue pair.
@@ -173,16 +174,25 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    // Create a queue pair.
    struct ibv_qp_init_attr qpAttributes;
    memset(&qpAttributes, 0, sizeof qpAttributes);
-   qpAttributes.cap.max_send_wr = maxWorkRequests;
-   qpAttributes.cap.max_recv_wr = maxWorkRequests;
-   qpAttributes.cap.max_send_sge = 6;
-   qpAttributes.cap.max_recv_sge = 6;
+   qpAttributes.cap.max_send_wr = 4096; // maxWorkRequests;
+   qpAttributes.cap.max_recv_wr = 4096; // maxWorkRequests;
+   qpAttributes.cap.max_send_sge = 1; //6;
+   qpAttributes.cap.max_recv_sge = 1; // 6;
    qpAttributes.qp_context = this; // Save the pointer this object.
    qpAttributes.sq_sig_all = signalSendQueue;
    qpAttributes.qp_type = IBV_QPT_RC;
    qpAttributes.send_cq = sendCompletionQ->getQueue();
    qpAttributes.recv_cq = recvCompletionQ->getQueue();
+   LOG_DEBUG_MSG("Setting SRQ to " << get_SRQ());
+   qpAttributes.srq     = get_SRQ();
+
    int rc = rdma_create_qp(_cmId, domain->getDomain(), &qpAttributes);
+
+   LOG_DEBUG_MSG("After Create QP, SRQ is " << get_SRQ());
+
+//   _cmId->qp = ibv_create_qp(domain->getDomain(), &qpAttributes);
+//   int rc = (_cmId->qp==NULL);
+
    if (rc != 0) {
       RdmaError e(errno, "rdma_create_qp() failed");
       LOG_ERROR_MSG(_tag << "error creating queue pair: " << bgcios::errorString(e.errcode()));
@@ -419,8 +429,10 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 {
    // Post the send request.
    struct ibv_send_wr *badRequest;
-   LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode) << " (" << request->opcode << ") work request to send queue with " <<
-                 request->num_sge << " sge, id=" << request->wr_id << ", imm_data=0x" << std::setw(8) << std::setfill('0') << std::hex << request->imm_data);
+   LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode)
+       << " (" << request->opcode << ") work request to send queue with "
+       << request->num_sge << " sge, id=" << request->wr_id << ", imm_data=0x"
+       << std::setw(8) << std::setfill('0') << std::hex << request->imm_data);
    int err = ibv_post_send(_cmId->qp, request, &badRequest);
    if (err != 0) {
       if (err==EINVAL)
@@ -469,11 +481,12 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
    // use address for wr_id
    send_wr.wr_id = (uint64_t)region.get();
 
-   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << (uintptr_t)send_wr.wr_id << " with Length " << send_sge.length
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << std::setfill('0') << std::setw(12) << std::hex <<
+       (uintptr_t)send_wr.wr_id << " with Length " << send_sge.length
        << " " << std::setw(8) << std::setfill('0') << std::hex << send_sge.addr);
    // Post a send for outbound message.
    ++_totalSendPosted;
-   ++_waitingSendPosted;
+//   ++_waitingSendPosted;
    return postSendQ(&send_wr);
 }
 /*
@@ -766,4 +779,15 @@ RdmaConnection::wr_opcode_str(enum ibv_wr_opcode opcode) const
    }
 
    return str;
+}
+
+int RdmaConnection::create_srq(RdmaProtectionDomainPtr domain)
+{
+  try {
+    _srq = std::make_shared<RdmaSharedReceiveQueue>(_cmId,domain);
+  }
+ catch (...) {
+    return 0;
+  }
+  return 1;
 }

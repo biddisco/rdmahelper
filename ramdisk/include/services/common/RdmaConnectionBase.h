@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <mutex>
 #include <atomic>
+#include <queue>
 
 //! Base connection class for RDMA operations with a remote partner.
 namespace bgcios {
@@ -26,49 +27,67 @@ namespace bgcios {
 class RdmaConnectionBase {
 public:
   //
-  RdmaConnectionBase() :
-    _waitingExpectedRecvPosted(0),
-    _waitingUnexpectedRecvPosted(0),
-    _waitingSendPosted(0) {}
-  //
-  std::deque<void*> _unexpected_recv;
+  RdmaConnectionBase() {}
+
+  // expected ops must be stored per clients, so use a map with qp as key
+  typedef std::queue<struct na_verbs_op_id*> OperationQueue;
+  OperationQueue ExpectedOps;
+  std::queue<uint64_t> _waitingReceives;
+
+  uint64_t popReceive() {
+    uint64_t wr_id = _waitingReceives.front();
+    this->_waitingReceives.pop();
+    LOG_DEBUG_MSG("After pop of " << wr_id << " size of waiting receives is " << _waitingReceives.size())
+    return wr_id;
+  }
+
+  void pushReceive_(uint64_t wr_id) {
+    _waitingReceives.push(wr_id);
+    LOG_DEBUG_MSG("After push of " << wr_id << " size of waiting receives is " << _waitingReceives.size())
+  }
 
   //! The number of outstanding work requests
-  std::atomic<uint32_t> _waitingExpectedRecvPosted;
-  std::atomic<uint32_t> _waitingUnexpectedRecvPosted;
-  std::atomic<uint32_t> _waitingSendPosted;
+  uint32_t getNumReceives() { return _waitingReceives.size(); }
 
-   //! \brief  Decrease waiting receive counter
-   //! \return the value of the waiting receive counter after decrement
-  uint32_t decrementWaitingRecv(bool expected) {
-    return (expected) ? (--_waitingExpectedRecvPosted) : (--_waitingUnexpectedRecvPosted);
-  }
-  uint32_t decrementWaitingSend() { return --_waitingSendPosted; }
-
-   //! \brief  Get the waiting receive counter
-   //! \return the value of the waiting receive counter after decrement
-   uint32_t getNumWaitingExpectedRecv() { return _waitingExpectedRecvPosted; }
-   uint32_t getNumWaitingUnexpectedRecv() { return _waitingUnexpectedRecvPosted; }
-   uint32_t getNumWaitingSend() { return _waitingSendPosted; }
-
-   //
-  void push_unexpected(void *item) {
-    std::lock_guard<std::mutex> lock(_unexpected_lock);
-    _unexpected_recv.push_back(item);
-  }
-  //
-  void *pop_unexpected() {
-    void *res = NULL;
-    std::lock_guard<std::mutex> lock(_unexpected_lock);
-    if (_unexpected_recv.size()>0) {
-      res = _unexpected_recv.front();
-      _unexpected_recv.pop_front();
+  void refill_preposts(int preposts) {
+    LOG_DEBUG_MSG("Entering refill size of waiting receives is " << _waitingReceives.size())
+    while (this->getNumReceives()<preposts) {
+      LOG_DEBUG_MSG("Pre-Posting a receive to client");
+      RdmaMemoryRegionPtr region = this->getFreeRegion(512);
+      this->postRecvRegionAsID(region, (uint64_t)region->getAddress(), region->getLength(), false);
     }
-    return res;
   }
-  //
-  int unexpected_size() { return _unexpected_recv.size(); }
-  std::mutex _unexpected_lock;
+
+  void setMemoryPool(memory_poolPtr pool)
+  {
+    this->_memoryPool = pool;
+  }
+
+  /*---------------------------------------------------------------------------*/
+  RdmaMemoryRegionPtr getFreeRegion(size_t size)
+  {
+    RdmaMemoryRegionPtr region = this->_memoryPool->allocate(size);
+    if (!region) {
+      LOG_ERROR_MSG("Error creating free memory region");
+    }
+    region->setMessageLength(size);
+
+    return region;
+  }
+
+  /*---------------------------------------------------------------------------*/
+  void releaseRegion(RdmaMemoryRegion *region)
+  {
+   this->_memoryPool->deallocate(region);
+  }
+
+  virtual uint64_t
+  postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false) = 0;
+
+protected:
+  memory_poolPtr _memoryPool;
+
+
 };
 
 } // namespace bgcios

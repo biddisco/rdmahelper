@@ -115,6 +115,7 @@ if (NOT BGQ)
       ${BGCIOS_DIR}/RdmaConnection.cc
       ${BGCIOS_DIR}/RdmaClient.cc
       ${BGCIOS_DIR}/RdmaServer.cc
+      ${BGCIOS_DIR}/RdmaSharedReceiveQueue.cc
       ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/include/services/common/memory_pool.cpp 
     )
 else()

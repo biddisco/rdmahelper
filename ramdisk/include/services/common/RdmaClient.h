@@ -30,8 +30,9 @@
 // Includes
 #include "RdmaConnection.h"
 #include "RdmaMemoryRegion.h"
-#include <memory>
 #include "ramdisk/include/services/common/memory_pool.hpp"
+#include <memory>
+#include <queue>
 
 namespace bgcios
 {
@@ -72,8 +73,10 @@ public:
    //! \param  completionQ Completion queue for both send and receive operations.
    //! \throws RdmaError.
 
-   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ, memory_poolPtr pool) :
-      RdmaConnection(cmId, domain, completionQ, completionQ)
+   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain,
+       RdmaCompletionQueuePtr completionQ, memory_poolPtr pool,
+       RdmaSharedReceiveQueuePtr SRQ) :
+      RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
    {
       createRegions(domain);
       _completionQ = completionQ;
@@ -95,146 +98,20 @@ public:
 
    int makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ);
 
-   void setMemoryPoold(memory_poolPtr pool)
-   {
-     this->_memoryPool = pool;
-   }
-
-   //! JB. Gets a memory region from the pinned memory pool
-   //! throws runtime_error if no free blocks are available.
-   RdmaMemoryRegionPtr getFreeRegion(size_t size=0);
-
-   //! JB. release a region of memory back to the pool
-   void releaseRegion(RdmaMemoryRegion *region);
-
    //! \brief  Get completion queue used for both send and receive operations.
    //! \return Completion queue pointer.
 
    RdmaCompletionQueuePtr& getCompletionQ(void) { return _completionQ; }
 
-
-/*
-   //! \brief  Get the pointer to the inbound message region.
-   //! \return Pointer to beginning of region.
-
-   void *getInboundMessagePtr(void) { return _inMessageRegion->getAddress(); }
-
-   //! \brief  Get the pointer to the outbound message region.
-   //! \return Pointer to beginning of region.
-
-   void *getOutboundMessagePtr(void) const { return _outMessageRegion->getAddress(); }
-
-   //! \brief  Return indicator if outbound message is ready.
-   //! \return True if a message is ready, otherwise false.
-
-   bool isOutboundMessageReady(void) const { return _outMessageRegion->isMessageReady(); }
-
-   //! \brief  Set the message length of the outbound message region.
-   //! \param  length New value for message length.
-   //! \return Nothing.
-
-   void setOutboundMessageLength(uint32_t length) { _outMessageRegion->setMessageLength(length); }
-
-   //! \brief  Post a send operation using the outbound message region.
-   //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
-
-   uint64_t postSendMessage(void) { return postSend(_outMessageRegion); }
-
-   //! \brief  Post a send operation using the outbound message region with signaling enabled
-   //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
-
-   uint64_t postSendMsgSignaled(void) { return postSend(_outMessageRegion,true); }
-   uint64_t postSendMsgSignaled(uint32_t length, uint32_t immediateData ) {
-     return postSend(_outMessageRegion, true, true, immediateData);
+   // overridden to monitor outstanding receive count
+   virtual uint64_t
+   postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false)
+   {
+     uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, address, length, expected);
+     this->pushReceive_(wr_id);
+     return wr_id;
    }
 
-   //! \brief  Post a send operation using the outbound message region.
-   //! \param  length Length of message in outbound message region.
-   //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
-
-   uint64_t postSendMessage(uint32_t length)
-   { 
-      setOutboundMessageLength(length);
-      return postSend(_outMessageRegion);
-   }
-
-   //! \brief  Post a send operation using the outbound message region with signaling enabled
-   //! \param  length Length of message in outbound message region.
-   //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
-
-   uint64_t postSendMsgSignaled(uint32_t length)
-   { 
-      setOutboundMessageLength(length);
-      return postSend(_outMessageRegion,true);
-   }
-
-   //! \brief  Post a receive operation using the inbound message region.
-   //! \return 0 when successful, errno when unsuccessful.
-
-   uint64_t postRecvMessageSignaled(void) { return postRecv(_inMessageRegion); }
-
-   //! JB. We need to use the address as wr_id
-   uint64_t postRecvMessage(void) {
-     return postRecvAddressAsID(_inMessageRegion, (uint64_t)_inMessageRegion->getAddress(), _sizeBlock);
-   }
-
-   //! \brief  Post a receive operation using the inbound message region.
-   //! \return 0 when successful, errno when unsuccessful.
-
-   int postRecvMsg(uint64_t address) { return postRecvAddressAsID(_inMessageRegion, address, _sizeBlock); }
-
-   //! \brief  Post a receive operation using the inbound message region.
-   //! \return 0 when successful, errno when unsuccessful.
-
-   int postRecvMsgMult(int numRecvRegions) 
-  { 
-    if ( _usingBlocking) return EINVAL;
-    if ( (numRecvRegions * _sizeBlock) > _inMessageRegion->getLength() ) return EINVAL;
-    _usingBlocking = true;
-    _numRecvBlocks = numRecvRegions;
-    int err = 0;
-    for (int i=0;i<numRecvRegions;i++){
-      err = postRecvAddressAsID(_inMessageRegion, (uint64_t)_inMessageRegion->getAddress()+(i*_sizeBlock), _sizeBlock);
-      if (err) return err;
-    }
-    return 0;
-  }
-
-   //! \brief  Get the unique id for the client.
-   //! \return Unique id value.
-
-   uint64_t getUniqueId(void) const { return _uniqueId; }
-
-   //! \brief  Set the unique id for the client.
-   //! \param  uniqueId New unique id value.
-   //! \return Nothing.
-
-   void setUniqueId(uint64_t uniqueId) { _uniqueId = uniqueId; }
-
-   //! \brief  Create memory regions for Auxilliary functions such as from the control system to the compute nodes
-   //! \param  domain Protection domain for client.
-   //! \return Nothing.
-   //! \throws RdmaError.
-
-   void createRegionAuxOutbound(RdmaProtectionDomainPtr domain);
-
-   //! \brief  Post a send operation using the Auxiliary message region relaying an inbound message
-   //! \param  mh pointer to message to send using the Auxilliary message region
-   //! \param  length Length of message in outbound message region.
-   //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
-
-   uint64_t postSendAuxMessage(char *mh, uint32_t length )
-   { 
-      memcpy(_outMessageRegionAux->getAddress(), mh, length);
-      _outMessageRegionAux->setMessageLength(length);
-      return postSend(_outMessageRegionAux,false); // NOT signaled
-   }
-*/
 private:
 
    //! \brief  Create memory regions for inbound and outbound messages.
@@ -258,8 +135,6 @@ private:
 
    //! Completion queue.
    RdmaCompletionQueuePtr _completionQ;
-
-   memory_poolPtr _memoryPool;
 
    //! Unique id to identify the client.
    uint64_t _uniqueId;

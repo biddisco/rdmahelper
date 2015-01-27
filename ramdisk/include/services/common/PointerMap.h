@@ -112,7 +112,7 @@ public:
    //! \brief  Clear the map.
    //! \return nothing
 
-   void clear(void) { return _map.clear(); }
+   void clear(void) { _map.clear(); }
 
    //! \brief  Return number of elements in the map.
    //! \return Number of elements.

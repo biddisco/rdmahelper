@@ -127,12 +127,13 @@ RdmaClient::makePeer()
       LOG_ERROR_MSG("error creating memory regions for messages: " << bgcios::errorString(e.errcode()));
       return e.errcode();
    }
-
+    std::cout << "Calling Kernel_RDMAConnect using port " << std::dec << port << std::endl;
     int success = (Kernel_RDMAConnect(Rdma_FD, port)==0);
     if (success) {
       std::cout << "Kernel_RDMAConnect was successful using port " << std::dec << port << std::endl;
     }
     else {
+      std::cout << "Kernel_RDMAConnect failed " << std::endl;
       throw "Kernel_RDMAConnect failed";
     }
 
@@ -143,19 +144,3 @@ RdmaClient::makePeer()
 }
 
 /*---------------------------------------------------------------------------*/
-RdmaMemoryRegionPtr RdmaClient::getFreeRegion(size_t size)
-{
-  RdmaMemoryRegionPtr region = this->_memoryPool->allocate(size);
-  if (!region) {
-    LOG_ERROR_MSG("Error creating free memory region");
-  }
-  region->setMessageLength(size);
-
-  return region;
-}
-
-/*---------------------------------------------------------------------------*/
-void RdmaClient::releaseRegion(RdmaMemoryRegion *region)
-{
- this->_memoryPool->deallocate(region);
-}

@@ -30,7 +30,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
   this->BufferReferenceCount++;
 
   // get a block
-  RdmaMemoryRegionPtr buffer = free_list_.top();
+  RdmaMemoryRegionPtr buffer = free_list_.front();
   free_list_.pop();
 
   H5FDdsmDebugLevel(5,"Popping Block"
@@ -160,7 +160,7 @@ int memory_pool::DeallocateList()
   DeallocateListBase();
 
   while (!free_list_.empty()) {
-    RdmaMemoryRegionPtr buffer = free_list_.top();
+    RdmaMemoryRegionPtr buffer = free_list_.front();
     free_list_.pop();
 //    struct ibv_mr *mr = this->BlockRegistrationMap[buffer];
 //    if (ibv_dereg_mr(mr)) {

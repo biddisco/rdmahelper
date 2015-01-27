@@ -82,20 +82,16 @@ public:
   {
     int success = Kernel_RDMARecv(this->Rdma_FD, region->getAddress(), length,
         region->getLocalKey());
-//   ++_totalRecvPosted;
     if (success != 0) {
       throw("Kernel_RDMARecv failed");
     }
-    if (expected) {
-     _waitingExpectedRecvPosted++;
-    } else {
-     _waitingUnexpectedRecvPosted++;
-    }
+    uint64_t wr_id = (uintptr_t) region.get();
     LOG_DEBUG_MSG(
-        "posting Recv wr_id " << std::hex << (uintptr_t) region.get()
+        "posting Recv wr_id " << std::setfill('0') << std::setw(12) << std::hex << wr_id
             << " with Length " << length << " " << std::setw(8)
             << std::setfill('0') << std::hex << address);
-    return (uintptr_t) region.get();
+    this->pushReceive_(wr_id);
+    return wr_id;
   }
 
   //! \brief  Connect to a remote server.
@@ -108,18 +104,7 @@ public:
     return 0;
   }
 
-  void setMemoryPoold(memory_poolPtr pool) {
-    this->_memoryPool = pool;
-  }
-
   void createRegions();
-
-  //! JB. Gets a memory region from the pinned memory pool
-  //! throws runtime_error if no free blocks are available.
-  RdmaMemoryRegionPtr getFreeRegion(size_t size = 0);
-
-  //! JB. release a region of memory back to the pool
-  void releaseRegion(RdmaMemoryRegion *region);
 
 private:
 
@@ -131,8 +116,6 @@ private:
 
   //! Memory region for Auxilliary outbound messages.
   RdmaMemoryRegionPtr _outMessageRegionAux;
-
-  memory_poolPtr _memoryPool;
 
   int Rdma_FD;
   int port;

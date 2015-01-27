@@ -136,7 +136,9 @@ RdmaCompletionQueue::removeCompletions(int numEntries)
    }
 //#define CIOSLOGMSG_WC(ID,wc) logMsgQpNum(ID,(struct ibv_wc *)wc)
    _numCompletions += nc;
-   LOG_CIOS_TRACE_MSG(_tag << "removed " << nc << " work completions from completion queue, " << _numCompletions-_nextCompletion << " are pending");
+   if (nc>0) {
+     LOG_CIOS_TRACE_MSG(_tag << "removed " << nc << " work completions from completion queue, " << _numCompletions-_nextCompletion << " are pending");
+   }
    _totalCompletions += _numCompletions;
 
    return nc;
@@ -153,8 +155,8 @@ RdmaCompletionQueue::popCompletion(void)
 
    // Get the next work completion from the list.
    struct ibv_wc *completion = &(_completions[_nextCompletion]);
-   LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status) << "' for operation " <<
-                 wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+   LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+       << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
 
    // Increment next work completion index.
    _nextCompletion++;

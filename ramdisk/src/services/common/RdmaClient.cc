@@ -148,20 +148,4 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
    return 0;
 }
 
-/*---------------------------------------------------------------------------*/
-RdmaMemoryRegionPtr RdmaClient::getFreeRegion(size_t size)
-{
-  RdmaMemoryRegionPtr region = this->_memoryPool->allocate(size);
-  if (!region) {
-    LOG_ERROR_MSG(_tag << "Error creating free memory region");
-  }
-  region->setMessageLength(size);
 
-  return region;
-}
-
-/*---------------------------------------------------------------------------*/
-void RdmaClient::releaseRegion(RdmaMemoryRegion *region)
-{
- this->_memoryPool->deallocate(region);
-}
