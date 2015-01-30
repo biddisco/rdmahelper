@@ -290,7 +290,7 @@ void MercuryController::eventChannelHandler(void) {
   switch (type) {
 
   case RDMA_CM_EVENT_CONNECT_REQUEST: {
-    printf("RDMA_CM_EVENT_CONNECT_REQUEST in event channel handler\n");
+    LOG_DEBUG_MSG("RDMA_CM_EVENT_CONNECT_REQUEST");
     // Construct a RdmaCompletionQueue object for the new client.
     RdmaCompletionQueuePtr completionQ;
     try {
@@ -312,7 +312,7 @@ void MercuryController::eventChannelHandler(void) {
       return;
     }
 
-    printf("qpnum = %d\n", client->getQpNum());
+    LOG_DEBUG_MSG("adding a new client with qpnum " << client->getQpNum());
     // Add new client to map of active clients.
     _clients.add(client->getQpNum(), client);
 
@@ -338,7 +338,7 @@ void MercuryController::eventChannelHandler(void) {
   }
 
   case RDMA_CM_EVENT_ESTABLISHED: {
-    printf("RDMA_CM_EVENT_ESTABLISHED\n");
+    LOG_DEBUG_MSG("RDMA_CM_EVENT_ESTABLISHED");
     // Find connection associated with this event.
     RdmaClientPtr client = _clients.get(_rdmaListener->getEventQpNum());
     LOG_CIOS_INFO_MSG(client->getTag() << "connection established with " << client->getRemoteAddressString());
@@ -347,7 +347,7 @@ void MercuryController::eventChannelHandler(void) {
   }
 
   case RDMA_CM_EVENT_DISCONNECTED: {
-    printf("RDMA_CM_EVENT_DISCONNECTED\n");
+    LOG_DEBUG_MSG("RDMA_CM_EVENT_DISCONNECTED");
     // Find connection associated with this event.
     uint32_t qp = _rdmaListener->getEventQpNum();
     RdmaClientPtr client = _clients.get(qp);
@@ -403,7 +403,7 @@ void MercuryController::eventChannelHandler(void) {
   }
 
   default: {
-    printf("RDMA event: %s is not supported\n", rdma_event_str(type));
+    LOG_ERROR_MSG("RDMA event: " << rdma_event_str(type) << " is not supported");
     break;
   }
   }

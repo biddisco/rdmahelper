@@ -99,7 +99,7 @@ public:
 
    bgcios::RdmaCompletionChannelPtr GetCompletionChannel() { return this->_completionChannel; }
 
-   int getPort() { return _port; }
+   unsigned int getPort() { return _port; }
 
    typedef std::function<int(struct ibv_wc *completion, RdmaClientPtr client)> CompletionFunction;
    void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
