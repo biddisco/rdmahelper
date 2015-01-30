@@ -64,10 +64,10 @@ public:
 
    RdmaMemoryRegion()
    {
-      _region = NULL;
+      _region        = NULL;
       _messageLength = 0;
-      _frags = 0;
-      _fd = -1;
+      _frags         = 0;
+      _fd            = -1;
    }
 
     RdmaMemoryRegion(struct ibv_mr *region, uint32_t messageLength)

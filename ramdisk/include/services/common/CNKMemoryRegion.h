@@ -58,13 +58,13 @@ public:
 
    //! \brief  Default constructor.
 
-   RdmaMemoryRegion()
-   {
-      _region.address = NULL;
-      _messageLength = 0;
-      _frags = 0;
-      _fd = -1;
-   }
+  RdmaMemoryRegion()
+  {
+     _region.address = NULL;
+     _messageLength  = 0;
+     _frags          = 0;
+     _fd             = -1;
+  }
 
     RdmaMemoryRegion(int Rdma_fd, const void *buffer, const uint64_t length);
 
