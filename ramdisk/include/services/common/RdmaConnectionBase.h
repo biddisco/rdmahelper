@@ -26,14 +26,27 @@ namespace bgcios {
 
 class RdmaConnectionBase {
 public:
-  //
-  RdmaConnectionBase() {}
-
-  // expected ops must be stored per clients, so use a map with qp as key
+  // expected ops must be stored per client, so use a map with qp as key
   typedef std::queue<struct na_verbs_op_id*> OperationQueue;
   OperationQueue ExpectedOps;
   std::queue<uint64_t> _waitingReceives;
 
+  //
+  RdmaConnectionBase() { }
+
+  virtual ~RdmaConnectionBase() {
+    while (!_waitingReceives.empty()) {
+      LOG_DEBUG_MSG("Connection closing, releasing region");
+      RdmaMemoryRegion *region = (RdmaMemoryRegion *)_waitingReceives.front();
+      this->releaseRegion(region);
+      _waitingReceives.pop();
+    }
+    // clear memory pool reference
+    LOG_DEBUG_MSG("releasing memory pool reference");
+    _memoryPool.reset();
+  }
+
+  /*---------------------------------------------------------------------------*/
   uint64_t popReceive() {
     uint64_t wr_id = _waitingReceives.front();
     this->_waitingReceives.pop();
@@ -41,14 +54,17 @@ public:
     return wr_id;
   }
 
+  /*---------------------------------------------------------------------------*/
   void pushReceive_(uint64_t wr_id) {
     _waitingReceives.push(wr_id);
     LOG_DEBUG_MSG("After push of " << wr_id << " size of waiting receives is " << _waitingReceives.size())
   }
 
+  /*---------------------------------------------------------------------------*/
   //! The number of outstanding work requests
   uint32_t getNumReceives() { return _waitingReceives.size(); }
 
+  /*---------------------------------------------------------------------------*/
   void refill_preposts(int preposts) {
     LOG_DEBUG_MSG("Entering refill size of waiting receives is " << _waitingReceives.size())
     while (this->getNumReceives()<preposts) {
@@ -58,6 +74,7 @@ public:
     }
   }
 
+  /*---------------------------------------------------------------------------*/
   void setMemoryPool(memory_poolPtr pool)
   {
     this->_memoryPool = pool;
@@ -86,7 +103,6 @@ public:
 
 protected:
   memory_poolPtr _memoryPool;
-
 
 };
 

@@ -56,10 +56,6 @@ RdmaClient::~RdmaClient()
       LOG_CIOS_DEBUG_MSG(_tag << "destroying outbound memory region");
       _outMessageRegion.reset();
    }
-
-   // clear memory pool reference
-   LOG_CIOS_DEBUG_MSG(_tag << "releasing memory pool reference");
-   _memoryPool.reset();
 }
 /*---------------------------------------------------------------------------*/
 void
