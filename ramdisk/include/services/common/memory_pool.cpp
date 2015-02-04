@@ -18,7 +18,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
 
   // if we have not exceeded our max size, allocate a new block
   if (free_list_.empty() && BlockList.size()<max_chunks_) {
-    LOG_TRACE_MSG("Creating new Block as free list is empty but max chunks not reached");
+    LOG_TRACE_MSG("Creating new Block as free list is empty but max chunks " << max_chunks_ << " not reached");
     AllocateRegisteredBlock(length);
   }
   // make sure the deque is not empty, wait on condition

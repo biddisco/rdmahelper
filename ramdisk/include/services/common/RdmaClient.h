@@ -105,9 +105,9 @@ public:
 
    // overridden to monitor outstanding receive count
    virtual uint64_t
-   postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false)
+   postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
    {
-     uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, address, length, expected);
+     uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, length, expected);
      this->pushReceive_(wr_id);
      return wr_id;
    }

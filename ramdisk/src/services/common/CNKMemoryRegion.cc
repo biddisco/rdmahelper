@@ -68,10 +68,10 @@ int RdmaMemoryRegion::allocate(int Rdma_fd, size_t length) {
         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (buffer != MAP_FAILED) {
       LOG_DEBUG_MSG(
-          "allocated storage for memory region with mmap OK, vlength = " << length);
+          "allocated storage for memory region with mmap OK, vlength = " << hexlength(length));
     } else if (buffer == MAP_FAILED) {
       int err = errno;
-      LOG_ERROR_MSG("error allocating storage using mmap for memory region: " << length
+      LOG_ERROR_MSG("error allocating storage using mmap for memory region: " << hexlength(length)
               << " " << bgcios::errorString(err));
       return err;
     }

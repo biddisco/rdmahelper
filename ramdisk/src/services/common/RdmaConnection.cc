@@ -453,7 +453,7 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 // JB approved
 //
 uint64_t
-RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData)
+RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge;
@@ -479,7 +479,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
       send_wr.send_flags |= IBV_SEND_SIGNALED;
    }
    // use address for wr_id
-   send_wr.wr_id = (uint64_t)region.get();
+   send_wr.wr_id = (uint64_t)region;
 
    LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
        << " with Length " << send_sge.length << " " << hexpointer(send_sge.addr));

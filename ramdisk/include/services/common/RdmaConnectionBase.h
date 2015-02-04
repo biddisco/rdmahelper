@@ -50,14 +50,14 @@ public:
   uint64_t popReceive() {
     uint64_t wr_id = _waitingReceives.front();
     this->_waitingReceives.pop();
-    LOG_DEBUG_MSG("After pop of " << wr_id << " size of waiting receives is " << _waitingReceives.size())
+    LOG_DEBUG_MSG("After pop of " << hexpointer(wr_id) << " size of waiting receives is " << _waitingReceives.size())
     return wr_id;
   }
 
   /*---------------------------------------------------------------------------*/
   void pushReceive_(uint64_t wr_id) {
     _waitingReceives.push(wr_id);
-    LOG_DEBUG_MSG("After push of " << wr_id << " size of waiting receives is " << _waitingReceives.size())
+    LOG_DEBUG_MSG("After push of " << hexpointer(wr_id) << " size of waiting receives is " << _waitingReceives.size())
   }
 
   /*---------------------------------------------------------------------------*/
@@ -69,8 +69,8 @@ public:
     LOG_DEBUG_MSG("Entering refill size of waiting receives is " << _waitingReceives.size())
     while (this->getNumReceives()<preposts) {
       LOG_DEBUG_MSG("Pre-Posting a receive to client");
-      RdmaMemoryRegionPtr region = this->getFreeRegion(512);
-      this->postRecvRegionAsID(region, (uint64_t)region->getAddress(), region->getLength(), false);
+      RdmaMemoryRegion *region = this->getFreeRegion(512);
+      this->postRecvRegionAsID(region, region->getLength(), false);
     }
   }
 
@@ -81,9 +81,9 @@ public:
   }
 
   /*---------------------------------------------------------------------------*/
-  RdmaMemoryRegionPtr getFreeRegion(size_t size)
+  RdmaMemoryRegion *getFreeRegion(size_t size)
   {
-    RdmaMemoryRegionPtr region = this->_memoryPool->allocate(size);
+    RdmaMemoryRegion* region = this->_memoryPool->allocate(size).get();
     if (!region) {
       LOG_ERROR_MSG("Error creating free memory region");
     }
@@ -98,8 +98,9 @@ public:
    this->_memoryPool->deallocate(region);
   }
 
+  /*---------------------------------------------------------------------------*/
   virtual uint64_t
-  postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false) = 0;
+  postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false) = 0;
 
 protected:
   memory_poolPtr _memoryPool;

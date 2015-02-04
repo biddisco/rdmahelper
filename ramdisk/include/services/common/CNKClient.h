@@ -63,31 +63,38 @@ public:
     return Rdma_FD;
   }
 
-  uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData)
+  uint64_t postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData)
   {
-    int success = Kernel_RDMASend(this->Rdma_FD, region->getAddress(),
-        region->getMessageLength(), region->getLocalKey());
+    void *_address = region->getAddress();
+
+    LOG_DEBUG_MSG(
+        "CNK: Posting send with buffer " << hexpointer(_address)
+            << " with Length " << hexlength(region->getMessageLength()) );
+
+    int success = Kernel_RDMASend(this->Rdma_FD, _address, region->getMessageLength(), region->getLocalKey());
+
     if (success != 0) {
       throw("Kernel_RDMASend failed");
     }
     LOG_DEBUG_MSG(
-        "posting Send wr_id " << hexpointer(region.get())
-            << " with Length " << hexlength(region->getMessageLength()) << " "
-            << hexpointer(region->getAddress()));
-    return (uintptr_t) region.get();
+        "posting Send wr_id " << hexpointer(region)
+            << " with Length " << hexlength(region->getMessageLength()) << " address "
+            << hexpointer(_address));
+    return (uint64_t)region;
   }
 
-  uint64_t postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected = false)
+  uint64_t postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected = false)
   {
-    int success = Kernel_RDMARecv(this->Rdma_FD, region->getAddress(), length,
-        region->getLocalKey());
+    void *_address = region->getAddress();
+
+    int success = Kernel_RDMARecv(this->Rdma_FD, _address, length, region->getLocalKey());
     if (success != 0) {
       throw("Kernel_RDMARecv failed");
     }
-    uint64_t wr_id = (uintptr_t) region.get();
+    uint64_t wr_id = (uint64_t)region;
     LOG_DEBUG_MSG(
         "posting Recv wr_id " << hexpointer(wr_id)
-            << " with Length " << hexlength(length) << " " << hexpointer(address));
+            << " with Length " << hexlength(length) << " " << hexpointer(_address));
     this->pushReceive_(wr_id);
     return wr_id;
   }

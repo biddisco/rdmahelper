@@ -160,7 +160,7 @@ public:
    //! \return Work request id for the posted operation.
    //! \throws RdmaError.
 
-   uint64_t postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImmediate, uint32_t immediateData);
+   uint64_t postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData);
 
    //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
    //! \param  reqID is the request ID for the requested operation
@@ -249,21 +249,21 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 }
 
 virtual uint64_t
-postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length, bool expected=false)
+postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_sge recv_sge;
-   recv_sge.addr =   address;
+   recv_sge.addr   = (uint64_t)region->getAddress();
    recv_sge.length = length;
-   recv_sge.lkey = region->getLocalKey();
+   recv_sge.lkey   = region->getLocalKey();
 
    // Build receive work request.
    struct ibv_recv_wr recv_wr;
    memset(&recv_wr, 0, sizeof(recv_wr));
-   recv_wr.next = NULL;
+   recv_wr.next    = NULL;
    recv_wr.sg_list = &recv_sge;
    recv_wr.num_sge = 1;
-   recv_wr.wr_id = (uint64_t)region.get();
+   recv_wr.wr_id   = (uint64_t)region;
    ++_totalRecvPosted;
    struct ibv_recv_wr *badRequest;
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
@@ -271,8 +271,7 @@ postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length
      throw(RdmaError(err, "postSendNoImmed failed"));
    }
    LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << hexpointer(recv_wr.wr_id)
-       << " with Length " << hexlength(length) << " "
-       << hexpointer(remoteAddr));
+       << " with Length " << hexlength(length));
    return recv_wr.wr_id;
 }
 
