@@ -198,8 +198,10 @@ postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 
    // Post a send to read data.
    ++_totalReadPosted;
-    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Read wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
+   int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
+   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Read wr_id " << hexpointer(send_wr.wr_id)
+       << " with Length " << hexlength(length) << " "
+       << hexpointer(remoteAddr));
    return err;
 }
 
@@ -240,7 +242,9 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    // Post a send to read data.
    ++_totalReadPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
-   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Write wr_id " << send_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << remoteAddr);
+   LOG_CIOS_TRACE_MSG(_tag.c_str() << "posting Write wr_id " << hexpointer(send_wr.wr_id)
+       << " with Length " << hexlength(length) << " "
+       << hexpointer(remoteAddr));
    return err;
 }
 
@@ -266,7 +270,9 @@ postRecvRegionAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length
    if (err!=0) {
      throw(RdmaError(err, "postSendNoImmed failed"));
    }
-   LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << std::hex << (uintptr_t)recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
+   LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << hexpointer(recv_wr.wr_id)
+       << " with Length " << hexlength(length) << " "
+       << hexpointer(remoteAddr));
    return recv_wr.wr_id;
 }
 

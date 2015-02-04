@@ -30,12 +30,9 @@
 #endif
 
 #define pointer uintptr_t
-#define H5FDdsmDebug(m) std::cout << "DEBUG " << std::endl;
-#define H5FDdsmDebugLevel(l,m) std::cout << l << " " << m << std::endl;
-#define H5FDdsmError(m) std::cout << "ERROR " << m << std::endl;
 
 #ifndef RDMAHELPER_LOGGING_H_
-  #define LOG_ERROR_MSG(m) std::cout << "ERROR " << m << std::endl;
+//  #define LOG_ERROR_MSG(m) std::cout << "ERROR " << m << std::endl;
 #endif
 
 using namespace bgcios;

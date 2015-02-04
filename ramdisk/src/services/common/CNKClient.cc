@@ -36,6 +36,8 @@
 
 using namespace bgcios;
 
+#define THROW_ERROR(x) { LOG_ERROR_MSG(x); throw std::runtime_error(x); }
+
 //RdmaProtectionDomainPtr pinned_allocator_malloc_free::_protectionDomain;
 //RdmaMemoryRegionPtr     pinned_allocator_malloc_free::_region;
 //std::mutex              pinned_allocator_malloc_free::_pd_mutex;
@@ -47,7 +49,7 @@ RdmaClient::RdmaClient(const std::string localAddr, const std::string localPort,
   port = boost::lexical_cast<int>(localPort);
   int success = (Kernel_RDMAOpen(&this->Rdma_FD)==0);
   if (!success) {
-    throw "RDMA failed initialization";
+    THROW_ERROR("RDMA failed initialization");
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -133,8 +135,7 @@ RdmaClient::makePeer()
       std::cout << "Kernel_RDMAConnect was successful using port " << std::dec << port << std::endl;
     }
     else {
-      std::cout << "Kernel_RDMAConnect failed " << std::endl;
-      throw "Kernel_RDMAConnect failed";
+      THROW_ERROR("Kernel_RDMAConnect failed");
     }
 
    // Post a receive to get the first message.

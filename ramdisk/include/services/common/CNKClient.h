@@ -71,10 +71,9 @@ public:
       throw("Kernel_RDMASend failed");
     }
     LOG_DEBUG_MSG(
-        "posting Send wr_id " << std::hex << (uintptr_t) region.get()
-            << " with Length " << region->getMessageLength() << " "
-            << std::setw(8) << std::setfill('0') << std::hex
-            << region->getAddress());
+        "posting Send wr_id " << hexpointer(region.get())
+            << " with Length " << hexlength(region->getMessageLength()) << " "
+            << hexpointer(region->getAddress()));
     return (uintptr_t) region.get();
   }
 
@@ -87,9 +86,8 @@ public:
     }
     uint64_t wr_id = (uintptr_t) region.get();
     LOG_DEBUG_MSG(
-        "posting Recv wr_id " << std::setfill('0') << std::setw(12) << std::hex << wr_id
-            << " with Length " << length << " " << std::setw(8)
-            << std::setfill('0') << std::hex << address);
+        "posting Recv wr_id " << hexpointer(wr_id)
+            << " with Length " << hexlength(length) << " " << hexpointer(address));
     this->pushReceive_(wr_id);
     return wr_id;
   }

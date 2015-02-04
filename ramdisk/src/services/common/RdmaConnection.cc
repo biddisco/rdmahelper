@@ -432,7 +432,7 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
    LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode)
        << " (" << request->opcode << ") work request to send queue with "
        << request->num_sge << " sge, id=" << request->wr_id << ", imm_data=0x"
-       << std::setw(8) << std::setfill('0') << std::hex << request->imm_data);
+       << hexpointer(request->imm_data));
    int err = ibv_post_send(_cmId->qp, request, &badRequest);
    if (err != 0) {
       if (err==EINVAL)
@@ -481,9 +481,8 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, bool signaled, bool withImm
    // use address for wr_id
    send_wr.wr_id = (uint64_t)region.get();
 
-   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << std::setfill('0') << std::setw(12) << std::hex <<
-       (uintptr_t)send_wr.wr_id << " with Length " << send_sge.length
-       << " " << std::setw(8) << std::setfill('0') << std::hex << send_sge.addr);
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
+       << " with Length " << send_sge.length << " " << hexpointer(send_sge.addr));
    // Post a send for outbound message.
    ++_totalSendPosted;
 //   ++_waitingSendPosted;

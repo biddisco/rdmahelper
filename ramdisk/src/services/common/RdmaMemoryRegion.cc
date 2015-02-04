@@ -84,9 +84,8 @@ RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
             << bgcios::errorString(err));
   } else {
     LOG_DEBUG_MSG(
-        "OK registering memory =" << std::setw(8) << std::setfill('0')
-            << std::hex << buffer << " : " << std::setw(8) << std::setfill('0')
-            << std::hex << _region->addr << " length " << length);
+        "OK registering memory =" << hexpointer(buffer) << " : "
+        << hexpointer(_region->addr) << " length " << length);
   }
 }
 
@@ -311,12 +310,15 @@ int RdmaMemoryRegion::allocateFromBgvrnicDevice(RdmaProtectionDomainPtr pd,
 
 /*---------------------------------------------------------------------------*/
 int RdmaMemoryRegion::release(void) {
+  LOG_DEBUG_MSG("About to release memory region with local key " << getLocalKey());
   if (_region != NULL) {
-//    CIOSLOGRDMA_REQ(BGV_RDMA_RMV, _region, _frags, _fd);
     void *buffer = getAddress();
     uint32_t length = getLength();
-    LOG_CIOS_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length 0x" << length);
-    ibv_dereg_mr(_region);
+    LOG_DEBUG_MSG("releasing memory region with local key " << getLocalKey() << " at address " << buffer << " with length 0x" << length);
+    if (ibv_dereg_mr(_region)) {
+      LOG_ERROR_MSG("Error, ibv_dereg_mr() failed\n");
+      return -1;
+    }
     // _frags == -1 is special to tell us not to release the memory, just unregister it
     if (_frags != -1) {
 #ifdef RDMA_USE_MMAP
