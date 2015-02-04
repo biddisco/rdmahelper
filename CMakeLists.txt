@@ -68,8 +68,9 @@ if(NOT BGQ)
     include_directories(${RDMA_CM_INCLUDE_DIRS})
 else()
     add_config_define(RDMAHELPER_BGQ_CNVERBS)
-    # this can be safely hadcoded
-    include_directories("/bgsys/drivers/V1R2M2/ppc64/spi/include/kernel")
+    # this can be safely hardcoded
+    set(BGSYS_includes "/bgsys/drivers/V1R2M2/ppc64/spi/include/kernel")
+    include_directories(${BGSYS_includes})
 endif()
     
 #------------------------------------------------------------------------------

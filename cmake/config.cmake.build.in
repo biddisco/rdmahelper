@@ -18,6 +18,7 @@ set(rdmahelper_DEFINITIONS @rdmahelper_DEFINITIONS@)
 #-----------------------------------------------------------------------------
 set (rdmahelper_INCLUDE_DIR 
   "@BGCIOS_includes@"
+  "@BGSYS_includes@"
   "@PROJECT_BINARY_DIR@" 
   "@Boost_INCLUDE_DIR@"
 )
