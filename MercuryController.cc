@@ -425,10 +425,9 @@ bool MercuryController::completionChannelHandler(uint64_t requestId) {
 
     // Remove work completions from the completion queue until it is empty.
     while (completionQ->removeCompletions() != 0) {
-
       // Get the next work completion.
       struct ibv_wc *completion = completionQ->popCompletion();
-      LOG_DEBUG_MSG("Removing wr_id " << std::setfill('0') << std::setw(12) << std::hex << completion->wr_id);
+      LOG_DEBUG_MSG("Removing wr_id " << hexpointer(completion->wr_id));
       // Find the connection that received the message.
       client = _clients.get(completion->qp_num);
 
