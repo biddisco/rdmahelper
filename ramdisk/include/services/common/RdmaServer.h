@@ -98,15 +98,7 @@ public:
      if (err!=0) {
        throw(RdmaError(err, "postSendNoImmed failed"));
      }
-     /*
-     if (expected) {
-       _waitingExpectedRecvPosted++;
-     }
-     else {
-       _waitingUnexpectedRecvPosted++;
-     }
-     */
-     LOG_DEBUG_MSG(_tag.c_str() << "posting SRQ Recv wr_id " << std::hex << (uintptr_t)recv_wr.wr_id << " with Length " << length << " " << std::setw(8) << std::setfill('0') << std::hex << address);
+     LOG_DEBUG_MSG(_tag.c_str() << "posting SRQ Recv wr_id " << hexpointer(recv_wr.wr_id) << " with Length " << hexlength(length) << " " << hexpointer(region->getAddress()));
      return recv_wr.wr_id;
    }
 };
