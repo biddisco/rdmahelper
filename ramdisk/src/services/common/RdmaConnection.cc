@@ -118,9 +118,9 @@ RdmaConnection::~RdmaConnection(void)
 
    // Destroy the event channel.
    if (_eventChannel != NULL) {
-      rdma_destroy_event_channel(_eventChannel); // No return code
-      LOG_CIOS_TRACE_MSG(_tag << "destroyed rdma event channel using fd " << _eventChannel->fd);
-      _eventChannel = NULL;
+     LOG_CIOS_TRACE_MSG(_tag << "destroying rdma event channel with fd " << hexnumber(_eventChannel->fd));
+     rdma_destroy_event_channel(_eventChannel); // No return code
+     _eventChannel = NULL;
    }
 
    LOG_CIOS_DEBUG_MSG(_tag << "destroyed connection");
@@ -153,7 +153,7 @@ RdmaConnection::createId(void)
       LOG_ERROR_MSG(_tag << "error creating rdma event channel: " << bgcios::errorString(e.errcode()));
       throw e;
    }
-   LOG_CIOS_DEBUG_MSG(_tag << "created rdma event channel with fd " << _eventChannel->fd);
+   LOG_CIOS_DEBUG_MSG(_tag << "created rdma event channel with fd " << hexnumber(_eventChannel->fd));
 
    // Create the rdma cm id.
    int err = rdma_create_id(_eventChannel, &_cmId, this, RDMA_PS_TCP);
@@ -600,7 +600,7 @@ int
 RdmaConnection::waitForEvent(void)
 {
    // This operation can block if there are no pending events available.
-   LOG_CIOS_TRACE_MSG(_tag << "waiting for rdma cm event on event channel with fd " << _eventChannel->fd << " ...");
+   LOG_CIOS_TRACE_MSG(_tag << "waiting for rdma cm event on event channel with fd " << hexnumber(_eventChannel->fd) << " ...");
    //LOG_INFO_MSG_FORCED(_tag << "waiting for rdma cm event on event channel with fd " << _eventChannel->fd << " ...");
    int err = rdma_get_cm_event(_eventChannel, &_event);
    if (err != 0) {

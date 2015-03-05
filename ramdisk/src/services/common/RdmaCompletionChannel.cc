@@ -25,10 +25,10 @@
 //! \brief Methods for bgcios::RdmaCompletionChannel class.
 
 // Includes
+#include "rdmahelper_logging.h"
 #include <ramdisk/include/services/common/RdmaCompletionChannel.h>
 #include <ramdisk/include/services/common/RdmaError.h>
 #include <ramdisk/include/services/ServicesConstants.h>
-#include "rdmahelper_logging.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -53,7 +53,7 @@ RdmaCompletionChannel::RdmaCompletionChannel(ibv_context *context, bool nonblock
       LOG_ERROR_MSG("error creating completion channel");
       throw e;
    }
-   LOG_CIOS_DEBUG_MSG("created completion channel with fd " << _completionChannel->fd);
+   LOG_CIOS_DEBUG_MSG("created completion channel with fd " << hexnumber(_completionChannel->fd));
 
    // If requested, put the completion channel descriptor in non-blocking mode.
    if (nonblockMode) {
@@ -74,10 +74,10 @@ RdmaCompletionChannel::~RdmaCompletionChannel()
       int err = ibv_destroy_comp_channel(_completionChannel);
       if (err == 0) {
          _completionChannel = NULL;
-         LOG_CIOS_DEBUG_MSG("destroyed completion channel using fd " << fd);
+         LOG_CIOS_DEBUG_MSG("destroyed completion channel using fd " << hexnumber(fd));
       }
       else {
-         LOG_ERROR_MSG("error destroying completion channel using fd " << fd << ": " << bgcios::errorString(err));
+         LOG_ERROR_MSG("error destroying completion channel using fd " << hexnumber(fd) << ": " << bgcios::errorString(err));
       }
    }
 }
@@ -88,16 +88,16 @@ RdmaCompletionChannel::setNonBlockMode(bool mode)
    int flags = fcntl(_completionChannel->fd, F_GETFL);
    if (mode) {
       flags |= O_NONBLOCK;
-      LOG_CIOS_TRACE_MSG("turning on non-blocking mode for completion channel with fd " << _completionChannel->fd);
+      LOG_CIOS_TRACE_MSG("turning on non-blocking mode for completion channel with fd " << hexnumber(_completionChannel->fd));
    }
    else {
       flags &= ~(O_NONBLOCK);
-      LOG_CIOS_TRACE_MSG("turning off non-blocking mode for completion channel with fd " << _completionChannel->fd);
+      LOG_CIOS_TRACE_MSG("turning off non-blocking mode for completion channel with fd " << hexnumber(_completionChannel->fd));
    }
    int rc = fcntl(_completionChannel->fd, F_SETFL, flags);
    if (rc != 0) {
       RdmaError e(errno, "fcntl() failed");
-      LOG_ERROR_MSG("error changing completion channel with fd " << _completionChannel->fd << " non-blocking mode using flags " <<
+      LOG_ERROR_MSG("error changing completion channel with fd " << hexnumber(_completionChannel->fd) << " non-blocking mode using flags " <<
                     std::hex << flags << ": " << bgcios::errorString(e.errcode()));
       throw e;
    }
@@ -116,7 +116,7 @@ void
 RdmaCompletionChannel::addCompletionQ(RdmaCompletionQueuePtr cq)
 {
    _queues.add(cq->getHandle(), cq);
-   LOG_CIOS_TRACE_MSG("added completion queue " << cq->getHandle() << " to completion channel using fd " << _completionChannel->fd);
+   LOG_CIOS_TRACE_MSG("added completion queue " << cq->getHandle() << " to completion channel using fd " << hexnumber(_completionChannel->fd));
    return;
 }
 
@@ -124,7 +124,7 @@ void
 RdmaCompletionChannel::removeCompletionQ(RdmaCompletionQueuePtr cq)
 {
    _queues.remove(cq->getHandle());
-   LOG_CIOS_TRACE_MSG("removed completion queue " << cq->getHandle() << " from completion channel using fd " << _completionChannel->fd);
+   LOG_CIOS_TRACE_MSG("removed completion queue " << cq->getHandle() << " from completion channel using fd " << hexnumber(_completionChannel->fd));
    return;
 }
 
@@ -139,11 +139,11 @@ RdmaCompletionChannel::waitForEvent(void)
    int rc = poll(&pollInfo, 1, -1); // Wait forever
    if (rc != 1) {
       RdmaError e(errno, "poll() failed");
-      LOG_ERROR_MSG("error polling completion channel using fd " << _completionChannel->fd << ": " << bgcios::errorString(e.errcode()));
+      LOG_ERROR_MSG("error polling completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << bgcios::errorString(e.errcode()));
       throw e;
    }
 
-   LOG_CIOS_TRACE_MSG("notification event is available on completion channel using fd " << _completionChannel->fd);
+   LOG_CIOS_TRACE_MSG("notification event is available on completion channel using fd " << hexnumber(_completionChannel->fd));
    return;
 }
 
@@ -151,18 +151,18 @@ RdmaCompletionQueuePtr
 RdmaCompletionChannel::getEvent(void)
 {
    // Get the notification event from the completion channel.
-   LOG_CIOS_TRACE_MSG("getting notification event on completion channel using fd " << _completionChannel->fd << " ...");
+   LOG_CIOS_TRACE_MSG("getting notification event on completion channel using fd " << hexnumber(_completionChannel->fd) << " ...");
    struct ibv_cq *eventQ;
    void *context;
    if (ibv_get_cq_event(_completionChannel, &eventQ, &context) != 0) {
       int err = errno;
       if (err == EAGAIN) {
-         LOG_CIOS_TRACE_MSG("no notification events available from completion channel using fd " << _completionChannel->fd);
+         LOG_CIOS_TRACE_MSG("no notification events available from completion channel using fd " << hexnumber(_completionChannel->fd));
          RdmaCompletionQueuePtr nullQ;
          return nullQ;
       }
       RdmaError e(err, "ibv_get_cq_event() failed");
-      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << _completionChannel->fd << ": " << bgcios::errorString(e.errcode()));
+      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << bgcios::errorString(e.errcode()));
       throw e;
    }
 

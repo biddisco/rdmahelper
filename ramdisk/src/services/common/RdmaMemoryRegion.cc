@@ -85,7 +85,7 @@ RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
   } else {
     LOG_DEBUG_MSG(
         "OK registering memory =" << hexpointer(buffer) << " : "
-        << hexpointer(_region->addr) << " length " << length);
+        << hexpointer(_region->addr) << " length " << hexlength(length));
   }
 }
 
@@ -170,7 +170,7 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
       }
       if (minFragments > 1) {
         LOG_CIOS_INFO_MSG("memory region with local key " << regionList[bestRegion]->lkey << " at address " << regionList[bestRegion]->addr <<
-            " with length " << regionList[bestRegion]->length << " has "<< minFragments << " fragments");
+            " with length " << hexlength(regionList[bestRegion]->length) << " has "<< minFragments << " fragments");
       }
 
       // Release all of the memory regions except for the best one.
@@ -201,7 +201,7 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
     _frags = 1;
   }
 
-  LOG_CIOS_DEBUG_MSG("allocated memory region " << this << " with local key " << getLocalKey() << " at address " << getAddress() << " with length " << getLength());
+  LOG_CIOS_DEBUG_MSG("allocated memory region " << this << " with local key " << getLocalKey() << " at address " << getAddress() << " with length " << hexlength(getLength()));
   CIOSLOGRDMA_REQ(BGV_RDMA_REG, _region, _frags, _fd);
   return 0;
 }
@@ -314,10 +314,12 @@ int RdmaMemoryRegion::release(void) {
   if (_region != NULL) {
     void *buffer = getAddress();
     uint32_t length = getLength();
-    LOG_DEBUG_MSG("releasing memory region with local key " << getLocalKey() << " at address " << buffer << " with length 0x" << length);
     if (ibv_dereg_mr(_region)) {
       LOG_ERROR_MSG("Error, ibv_dereg_mr() failed\n");
       return -1;
+    }
+    else {
+      LOG_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length " << hexlength(length));
     }
     // _frags == -1 is special to tell us not to release the memory, just unregister it
     if (_frags != -1) {

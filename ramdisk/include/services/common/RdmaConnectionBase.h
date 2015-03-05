@@ -48,8 +48,11 @@ public:
 
   /*---------------------------------------------------------------------------*/
   uint64_t popReceive() {
+    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     uint64_t wr_id = _waitingReceives.front();
+    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     this->_waitingReceives.pop();
+    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     LOG_DEBUG_MSG("After pop of " << hexpointer(wr_id) << " size of waiting receives is " << _waitingReceives.size())
     return wr_id;
   }
@@ -57,7 +60,7 @@ public:
   /*---------------------------------------------------------------------------*/
   void pushReceive_(uint64_t wr_id) {
     _waitingReceives.push(wr_id);
-    LOG_DEBUG_MSG("After push of " << hexpointer(wr_id) << " size of waiting receives is " << _waitingReceives.size())
+    LOG_DEBUG_MSG("After push of " << hexpointer(wr_id) << "size of waiting receives is " << _waitingReceives.size())
   }
 
   /*---------------------------------------------------------------------------*/

@@ -56,7 +56,7 @@ RdmaMemoryRegion::RdmaMemoryRegion(int Rdma_fd, const void *buffer, const uint64
   else {
     LOG_DEBUG_MSG(
         "OK registering memory =" << hexpointer(buffer) << " : "
-        << hexpointer(_region.address) << " length " << length);
+        << hexpointer(_region.address) << " length " << hexlength(length));
   }
 }
 

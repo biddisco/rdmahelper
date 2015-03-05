@@ -7,6 +7,7 @@
 
   #ifdef RDMAHELPER_BOOST_LOGGING
     #include <ostream>
+    #include <iomanip>
     #include <sstream>
     #include <memory>
     #include <string>
@@ -14,6 +15,8 @@
 
     #define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
     #define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
+    #define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::hex << (uintptr_t)(p) << " "
+
 
     #define LOG_DECLARE_FILE(f)
 
@@ -27,7 +30,7 @@
 
     #define LOG_CIOS_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << x;
     #define LOG_CIOS_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << x;
-    #define LOG_CIOS_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)    << x;
+    #define LOG_CIOS_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << x;
 
     #define BGV_RDMADROP 1
     #define BGV_RDMA_REG 2
