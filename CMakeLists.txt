@@ -28,20 +28,7 @@ include_directories(${Boost_INCLUDE_DIR})
 #------------------------------------------------------------------------------
 option(RDMAHELPER_ENABLE_LOGGING "Enable logging" ON)
 if (RDMAHELPER_ENABLE_LOGGING)
-  option(RDMAHELPER_USE_BOOST_LOG "Use boost log library (if off, use Log4CXX)" ON)
-  if (RDMAHELPER_USE_BOOST_LOG)
-    add_config_define(RDMAHELPER_BOOST_LOGGING)
-  else()
-    #------------------------------------------------------------------------------
-    # Log4CXX 
-    #------------------------------------------------------------------------------
-    set(RDMAHELPER_USE_LOG4CXX 1)
-    find_package(Log4Cxx)
-    add_config_define(RDMAHELPER_LOG4CXX_LOGGING)
-    if(NOT Log4CXX_FOUND)
-      add_config_define(RDMAHELPER_DISABLE_LOGGING)
-    endif()
-  endif()
+  add_config_define(RDMAHELPER_BOOST_LOGGING)
 else()
   add_config_define(RDMAHELPER_DISABLE_LOGGING)
 endif()
@@ -104,7 +91,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 #------------------------------------------------------------------------------
 # RDMA Helper library 
 #------------------------------------------------------------------------------
-set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/src/services/common)
+set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if (NOT BGQ)
     set(BGCIOS_SRC
@@ -117,32 +104,20 @@ if (NOT BGQ)
       ${BGCIOS_DIR}/RdmaClient.cc
       ${BGCIOS_DIR}/RdmaServer.cc
       ${BGCIOS_DIR}/RdmaSharedReceiveQueue.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/include/services/common/memory_pool.cpp 
+      ${BGCIOS_DIR}/memory_pool.cpp 
     )
 else()
     set(BGCIOS_SRC
-      ${CMAKE_CURRENT_SOURCE_DIR}/ramdisk/include/services/common/memory_pool.cpp 
+      ${BGCIOS_DIR}/memory_pool.cpp 
       ${BGCIOS_DIR}/CNKMemoryRegion.cc
       ${BGCIOS_DIR}/CNKClient.cc
     )
 endif()
  
 set(BGCIOS_includes
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/utility/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${MPI_C_INCLUDE_PATH}
 )
-
-if(RDMAHELPER_USE_LOG4CXX)
-  set(BGCIOS_SRC
-    ${BGCIOS_SRC}
-    ${BGCIOS_DIR}/Cioslog.cc
-  )
-  set(BGCIOS_includes
-    ${BGCIOS_includes}
-    ${LOG4CXX_INCLUDE_DIR}
-  )
-endif()
    
 include_directories(
   ${BGCIOS_includes}
