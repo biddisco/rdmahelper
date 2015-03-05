@@ -41,10 +41,6 @@ RdmaServer::RdmaServer(in_addr_t addr, in_port_t port) : RdmaConnection()
    tag << "[CM " << port << "] ";
    setTag(tag.str());
 
-   // Create the RDMA connection management id and event channel.
-   LOG_CIOS_DEBUG_MSG(_tag << "ready to create rdma cm id");
-   createId();
-
    // Bind an address for connections.
    int err = bind(addr, port);
    if (err != 0) {
@@ -80,7 +76,7 @@ RdmaServer::bind(in_addr_t addr, in_port_t port)
    }
    if (port==0) {
      uint16_t port = ntohs(rdma_get_src_port(_cmId));
-     LOG_CIOS_DEBUG_MSG(_tag << "Actual port selected by rdmacm is " << port);
+     LOG_CIOS_DEBUG_MSG(_tag << "Actual port selected by rdmacm is " << std::dec << port);
      // _localAddress.sin_port = port;
      // Generate an unique tag for trace points.
      std::ostringstream tag;
