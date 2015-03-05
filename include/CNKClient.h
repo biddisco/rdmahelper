@@ -1,3 +1,15 @@
+// Copyright (c) 2014-2015 John Biddiscombe
+// Copyright (c) 2011,2012 IBM Corp.
+//
+// ================================================================
+// Portions of this code taken from IBM BlueGene-Q source
+// 
+// This software is available to you under the
+// Eclipse Public License (EPL).
+//
+// Please refer to the file "eclipse-1.0.txt" 
+// ================================================================
+//
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
 /* This is an automatically generated copyright prolog.             */

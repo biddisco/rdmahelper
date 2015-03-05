@@ -1,3 +1,15 @@
+// Copyright (c) 2014-2015 John Biddiscombe
+// Copyright (c) 2011,2012 IBM Corp.
+//
+// ================================================================
+// Portions of this code taken from IBM BlueGene-Q source
+// 
+// This software is available to you under the
+// Eclipse Public License (EPL).
+//
+// Please refer to the file "eclipse-1.0.txt" 
+// ================================================================
+//
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
 /* This is an automatically generated copyright prolog.             */
@@ -25,7 +37,8 @@
 //! \brief Methods for bgcios::RdmaClient class.
 
 #include "RdmaLogging.h"
-#include <RdmaClient.h>
+#include <CNKClient.h>
+#include <CNKMemoryRegion.h>
 #include <RdmaError.h>
 #include <chrono>
 #include <thread>
@@ -33,50 +46,69 @@
 
 using namespace bgcios;
 
+#define THROW_ERROR(x) { LOG_ERROR_MSG(x); throw std::runtime_error(x); }
+
 //RdmaProtectionDomainPtr pinned_allocator_malloc_free::_protectionDomain;
 //RdmaMemoryRegionPtr     pinned_allocator_malloc_free::_region;
 //std::mutex              pinned_allocator_malloc_free::_pd_mutex;
 
 //LOG_DECLARE_FILE("cios.common");
 /*---------------------------------------------------------------------------*/
+RdmaClient::RdmaClient(const std::string localAddr, const std::string localPort, const std::string remoteAddr, const std::string remotePort)
+{
+  port = boost::lexical_cast<int>(localPort);
+  int success = (Kernel_RDMAOpen(&this->Rdma_FD)==0);
+  if (!success) {
+    THROW_ERROR("RDMA failed initialization");
+  }
+}
+/*---------------------------------------------------------------------------*/
 RdmaClient::~RdmaClient()
 {
   LOG_DEBUG_MSG("Client destructor being called");
    // Destroy memory region for inbound messages.
    if (_inMessageRegion != NULL) {
-      LOG_CIOS_DEBUG_MSG(_tag << "destroying inbound memory region");
+      LOG_CIOS_DEBUG_MSG("destroying inbound memory region");
       _inMessageRegion.reset();
    }
 
    // Destroy memory region for outbound messages.
    if (_outMessageRegion != NULL) {
-      LOG_CIOS_DEBUG_MSG(_tag << "destroying outbound memory region");
+      LOG_CIOS_DEBUG_MSG("destroying outbound memory region");
       _outMessageRegion.reset();
    }
+
+   // clear memory pool reference
+   LOG_CIOS_DEBUG_MSG("releasing memory pool reference");
+   _memoryPool.reset();
 }
 /*---------------------------------------------------------------------------*/
 void
-RdmaClient::createRegions(RdmaProtectionDomainPtr domain)
+RdmaClient::createRegions()
 {
+
+  return;
+ /*
    // Create a memory region for inbound messages.
    _inMessageRegion = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
-   int err = _inMessageRegion->allocate64kB(domain);
-//   int err = _inMessageRegion->allocate(domain, 4096);
+   int err = _inMessageRegion->allocate64kB();
+//   int err = _inMessageRegion->allocate(4096);
    if (err != 0) {
       RdmaError e(err, "allocating inbound memory region failed");
-      LOG_ERROR_MSG(_tag << "HERE : error allocating inbound message region: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG("HERE : error allocating inbound message region: " << RdmaError::errorString(err));
       throw e;
    }
 
    // Create a memory region for outbound messages.
    _outMessageRegion = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
-   err = _outMessageRegion->allocate64kB(domain);
+   err = _outMessageRegion->allocate64kB();
    if (err != 0) {
       RdmaError e(err, "allocating outbound memory region failed");
-      LOG_ERROR_MSG(_tag << "error allocating outbound message region: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG("error allocating outbound message region: " << RdmaError::errorString(err));
       throw e;
    }
    return;
+*/
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -88,7 +120,7 @@ RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
    int err = _outMessageRegionAux->allocate(domain, bgcios::SmallMessageRegionSize);
    if (err != 0) {
       RdmaError e(err, "allocating outbound memory region failed");
-      LOG_ERROR_MSG(_tag << "error allocating outbound message region: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG("error allocating outbound message region: " << RdmaError::errorString(err));
       throw e;
    }
 
@@ -97,48 +129,29 @@ RdmaClient::createRegionAuxOutbound(RdmaProtectionDomainPtr domain)
 */
 /*---------------------------------------------------------------------------*/
 int
-RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ)
+RdmaClient::makePeer()
 {
-   this->_domain = domain;
-   this->_completionQ = completionQ;
-
    // Create memory regions.
    try {
-      createRegions(domain);
+      createRegions();
    }
    catch (RdmaError& e) {
-      LOG_ERROR_MSG(_tag << "error creating memory regions for messages: " << RdmaError::errorString(e.errcode()));
+      LOG_ERROR_MSG("error creating memory regions for messages: " << RdmaError::errorString(e.errcode()));
       return e.errcode();
    }
-
-   // Create a queue pair.
-   try {
-      createQp(domain, completionQ, completionQ, 1, false);
-   }
-   catch (RdmaError& e) {
-      LOG_ERROR_MSG(_tag << "error creating queue pair: " << RdmaError::errorString(e.errcode()));
-      return e.errcode();
-   }
+    std::cout << "Calling Kernel_RDMAConnect using port " << std::dec << port << std::endl;
+    int success = (Kernel_RDMAConnect(Rdma_FD, port)==0);
+    if (success) {
+      std::cout << "Kernel_RDMAConnect was successful using port " << std::dec << port << std::endl;
+    }
+    else {
+      THROW_ERROR("Kernel_RDMAConnect failed");
+    }
 
    // Post a receive to get the first message.
-
 //   postRecvMessage();
-
-   // Resolve a route to the server.
-   int err = resolveRoute();
-   if (err != 0) {
-      LOG_ERROR_MSG(_tag << "error resolving route to " << addressToString(&_remoteAddress) << ": " << RdmaError::errorString(err));
-      return err;
-   }
-
-   // Connect to server.
-   err = connect();
-   if (err != 0) {
-      LOG_ERROR_MSG(_tag << "error connecting to " << addressToString(&_remoteAddress) << ": " << RdmaError::errorString(err));
-      return err;
-   }
 
    return 0;
 }
 
-
+/*---------------------------------------------------------------------------*/

@@ -95,22 +95,22 @@ set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if (NOT BGQ)
     set(BGCIOS_SRC
-      ${BGCIOS_DIR}/RdmaMemoryRegion.cc
-      ${BGCIOS_DIR}/RdmaDevice.cc
-      ${BGCIOS_DIR}/RdmaCompletionChannel.cc
-      ${BGCIOS_DIR}/RdmaCompletionQueue.cc
-      ${BGCIOS_DIR}/RdmaProtectionDomain.cc
-      ${BGCIOS_DIR}/RdmaConnection.cc
-      ${BGCIOS_DIR}/RdmaClient.cc
-      ${BGCIOS_DIR}/RdmaServer.cc
-      ${BGCIOS_DIR}/RdmaSharedReceiveQueue.cc
+      ${BGCIOS_DIR}/RdmaMemoryRegion.cpp
+      ${BGCIOS_DIR}/RdmaDevice.cpp
+      ${BGCIOS_DIR}/RdmaCompletionChannel.cpp
+      ${BGCIOS_DIR}/RdmaCompletionQueue.cpp
+      ${BGCIOS_DIR}/RdmaProtectionDomain.cpp
+      ${BGCIOS_DIR}/RdmaConnection.cpp
+      ${BGCIOS_DIR}/RdmaClient.cpp
+      ${BGCIOS_DIR}/RdmaServer.cpp
+      ${BGCIOS_DIR}/RdmaSharedReceiveQueue.cpp
       ${BGCIOS_DIR}/memory_pool.cpp 
     )
 else()
     set(BGCIOS_SRC
       ${BGCIOS_DIR}/memory_pool.cpp 
-      ${BGCIOS_DIR}/CNKMemoryRegion.cc
-      ${BGCIOS_DIR}/CNKClient.cc
+      ${BGCIOS_DIR}/CNKMemoryRegion.cpp
+      ${BGCIOS_DIR}/CNKClient.cpp
     )
 endif()
  
