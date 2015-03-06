@@ -124,7 +124,7 @@ int memory_pool::AllocateList(std::size_t chunks)
   //
   LOG_DEBUG_MSG("Allocating " << std::dec << num_chunks << " blocks of " << hexlength(this->chunk_size_));
   //
-  for (int i = 0; i < num_chunks; i++) {
+  for (std::size_t i=0; i<num_chunks; i++) {
     RdmaMemoryRegionPtr buffer = this->AllocateRegisteredBlock(this->chunk_size_);
     if (buffer == NULL) {
       this->max_chunks_ = i - 1;

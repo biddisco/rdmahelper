@@ -79,7 +79,7 @@ public:
   uint32_t getNumReceives() { return _waitingReceives.size(); }
 
   /*---------------------------------------------------------------------------*/
-  void refill_preposts(int preposts) {
+  void refill_preposts(unsigned int preposts) {
     LOG_DEBUG_MSG("Entering refill size of waiting receives is " << _waitingReceives.size())
     while (this->getNumReceives()<preposts) {
       LOG_DEBUG_MSG("Pre-Posting a receive to client");
