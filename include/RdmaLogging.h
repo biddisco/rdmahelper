@@ -39,6 +39,9 @@
     #define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << x;
     #define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << x;
 
+    #define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__ << " ****************");
+    #define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__ << " ################");
+
 
     #define LOG_CIOS_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << x;
     #define LOG_CIOS_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << x;
@@ -71,6 +74,9 @@
   #define LOG_INFO_MSG(x)
   #define LOG_WARN_MSG(x)
   #define LOG_ERROR_MSG(x)
+
+  #define FUNC_START_DEBUG_MSG
+  #define FUNC_END_DEBUG_MSG
 
   #define LOG_CIOS_DEBUG_MSG(x)
   #define LOG_CIOS_INFO_MSG(x)
