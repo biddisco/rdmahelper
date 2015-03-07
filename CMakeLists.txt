@@ -116,16 +116,10 @@ endif()
  
 set(BGCIOS_includes
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${MPI_C_INCLUDE_PATH}
 )
    
 include_directories(
   ${BGCIOS_includes}
-)
-
-link_directories(
-  ${SLURM_LIBRARY_PATH}
-  ${MPICH_ROOT}/lib
 )
 
 add_library(rdmahelper
@@ -137,15 +131,7 @@ target_link_libraries(rdmahelper
   ${IB_VERBS_LIBRARIES}
   ${RDMA_CM_LIBRARIES}
   ${Boost_LIBRARIES}
-  ${MPI_C_LIBRARIES}
 )
-
-if(RDMAHELPER_USE_LOG4CXX)
-  target_link_libraries(rdmahelper
-    ${LOG4CXX_LIBRARIES}
-  )
-endif()
-   
 
 if (NOT rdmahelper_EXPORTED_TARGETS)
   set(rdmahelper_EXPORTED_TARGETS "rdmahelper-targets") 
