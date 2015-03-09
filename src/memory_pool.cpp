@@ -10,8 +10,8 @@
 // Please refer to the file "eclipse-1.0.txt" 
 // ================================================================
 //
-#include "memory_pool.h"
 #include "RdmaLogging.h"
+#include "memory_pool.h"
 //
 #include <cstdlib>
 #include <cstdio>
