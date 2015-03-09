@@ -96,6 +96,7 @@ include_directories(
 #------------------------------------------------------------------------------
 if (NOT BGQ)
     set(RDMAHELPER_SRC
+      src/RdmaLogging.cpp
       src/RdmaMemoryRegion.cpp
       src/RdmaDevice.cpp
       src/RdmaCompletionChannel.cpp
@@ -109,6 +110,7 @@ if (NOT BGQ)
     )
 else()
     set(RDMAHELPER_SRC
+      src/RdmaLogging.cpp
       src/memory_pool.cpp 
       src/CNKMemoryRegion.cpp
       src/CNKClient.cpp

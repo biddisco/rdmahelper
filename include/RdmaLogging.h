@@ -45,25 +45,7 @@ namespace sinks = boost::log::sinks;
 namespace attrs = boost::log::attributes;
 namespace keywords = boost::log::keywords;
 
-void initLogging()
-{
-    logging::add_console_log
-    (
-        std::clog,
-        // This makes the sink to write log records that look like this:
-        // 1: <normal> A normal severity message
-        // 2: <error> An error severity message
-        keywords::format =
-        (
-            expr::stream
-//            << (boost::format("%05d") % expr::attr< unsigned int >("LineID"))
-            << expr::attr< unsigned int >("LineID")
-                << ": <" << logging::trivial::severity
-                << "> " << expr::smessage
-        )
-    );
-    logging::add_common_attributes();
-}
+    void initLogging();
 
     #define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
     #define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
