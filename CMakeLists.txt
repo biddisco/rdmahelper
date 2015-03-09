@@ -14,7 +14,7 @@ find_package(Boost 1.50.0  REQUIRED
    regex date_time serialization 
   program_options filesystem log log_setup system thread 
 )
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------
 # HPX 
@@ -83,48 +83,50 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/config_defines.hpp.in"
                @ONLY)
 
 #
-# to #include "rdmahelper_defines.h"
+# generated file #include "rdmahelper_defines.h"
 #
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include 
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 
 #------------------------------------------------------------------------------
-# RDMA Helper library 
+# library sources
 #------------------------------------------------------------------------------
-set(BGCIOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
 if (NOT BGQ)
-    set(BGCIOS_SRC
-      ${BGCIOS_DIR}/RdmaMemoryRegion.cpp
-      ${BGCIOS_DIR}/RdmaDevice.cpp
-      ${BGCIOS_DIR}/RdmaCompletionChannel.cpp
-      ${BGCIOS_DIR}/RdmaCompletionQueue.cpp
-      ${BGCIOS_DIR}/RdmaProtectionDomain.cpp
-      ${BGCIOS_DIR}/RdmaConnection.cpp
-      ${BGCIOS_DIR}/RdmaClient.cpp
-      ${BGCIOS_DIR}/RdmaServer.cpp
-      ${BGCIOS_DIR}/RdmaSharedReceiveQueue.cpp
-      ${BGCIOS_DIR}/memory_pool.cpp 
+    set(RDMAHELPER_SRC
+      src/RdmaMemoryRegion.cpp
+      src/RdmaDevice.cpp
+      src/RdmaCompletionChannel.cpp
+      src/RdmaCompletionQueue.cpp
+      src/RdmaProtectionDomain.cpp
+      src/RdmaConnection.cpp
+      src/RdmaClient.cpp
+      src/RdmaServer.cpp
+      src/RdmaSharedReceiveQueue.cpp
+      src/memory_pool.cpp 
     )
 else()
-    set(BGCIOS_SRC
-      ${BGCIOS_DIR}/memory_pool.cpp 
-      ${BGCIOS_DIR}/CNKMemoryRegion.cpp
-      ${BGCIOS_DIR}/CNKClient.cpp
+    set(RDMAHELPER_SRC
+      src/memory_pool.cpp 
+      src/CNKMemoryRegion.cpp
+      src/CNKClient.cpp
     )
 endif()
  
-set(BGCIOS_includes
+set(RDMAHELPER_includes
   ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${IB_VERBS_INCLUDE_DIRS}
+  ${RDMA_CM_INCLUDE_DIRS}
+  ${BGSYS_includes}
 )
    
-include_directories(
-  ${BGCIOS_includes}
-)
-
 add_library(rdmahelper
-  ${BGCIOS_UTILITY_SRC}
-  ${BGCIOS_SRC} 
+  ${RDMAHELPER_UTILITY_SRC}
+  ${RDMAHELPER_SRC} 
 )
 
 target_link_libraries(rdmahelper
