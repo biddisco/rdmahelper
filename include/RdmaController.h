@@ -21,8 +21,8 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  MercuryController.h
-//! \brief Declaration for bgcios::stdio::MercuryController class.
+//! \file  RdmaController.h
+//! \brief Declaration for bgcios::stdio::RdmaController class.
 
 #ifndef STDIO_HWSTDIOCONTROLLER_H
 #define STDIO_HWSTDIOCONTROLLER_H
@@ -46,7 +46,7 @@ namespace bgcios
 
 //! \brief Handle standard I/O service messages when running on hardware.
 
-class MercuryController
+class RdmaController
 {
 public:
   typedef std::pair<uint32_t, RdmaClientPtr> ClientMapPair;
@@ -54,11 +54,11 @@ public:
    //! \brief  Default constructor.
    //! \param  config Configuration from command line and properties file.
 
-   MercuryController(const char *device, const char *interface, int port);
+   RdmaController(const char *device, const char *interface, int port);
 
    //! \brief  Default destructor.
 
-   ~MercuryController();
+   ~RdmaController();
 
    //! \brief  Open all connections needed by the service daemon.
    //! \param  dataChannelPort Port number for listening data channel socket.
@@ -211,8 +211,8 @@ private:
 
 };
 
-//! Smart pointer for MercuryController object.
-typedef std::shared_ptr<MercuryController> MercuryControllerPtr;
+//! Smart pointer for RdmaController object.
+typedef std::shared_ptr<RdmaController> RdmaControllerPtr;
 
 } // namespace bgcios
 

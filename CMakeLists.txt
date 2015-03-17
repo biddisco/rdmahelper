@@ -107,6 +107,7 @@ if (NOT BGQ)
       src/RdmaServer.cpp
       src/RdmaSharedReceiveQueue.cpp
       src/memory_pool.cpp 
+      src/RdmaController.cpp
     )
 else()
     set(RDMAHELPER_SRC

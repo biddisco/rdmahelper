@@ -21,9 +21,10 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  MercuryController.cc
-//! \brief Methods for bgcios::stdio::MercuryController class.
-#include "MercuryController.h"
+//! \file  RdmaController.cc
+//! \brief Methods for bgcios::stdio::RdmaController class.
+#include "../include/RdmaController.h"
+
 #include <RdmaError.h>
 #include <RdmaDevice.h>
 #include <RdmaCompletionQueue.h>
@@ -44,31 +45,31 @@ using namespace bgcios;
 
 const uint64_t LargeRegionSize = 8192;
 /*---------------------------------------------------------------------------*/
-MercuryController::MercuryController(const char *device, const char *interface, int port) {
+RdmaController::RdmaController(const char *device, const char *interface, int port) {
   this->_device = device;
   this->_interface = interface;
   this->_port = port;
 }
 
 /*---------------------------------------------------------------------------*/
-MercuryController::~MercuryController() {
-  LOG_DEBUG_MSG("MercuryController destructor clearing clients");
+RdmaController::~RdmaController() {
+  LOG_DEBUG_MSG("RdmaController destructor clearing clients");
   _clients.clear();
-  LOG_DEBUG_MSG("MercuryController destructor closing server");
+  LOG_DEBUG_MSG("RdmaController destructor closing server");
   this->_rdmaListener.reset();
-  LOG_DEBUG_MSG("MercuryController destructor freeing regions");
+  LOG_DEBUG_MSG("RdmaController destructor freeing regions");
   this->_largeRegion.reset();
-  LOG_DEBUG_MSG("MercuryController destructor freeing memory pool");
+  LOG_DEBUG_MSG("RdmaController destructor freeing memory pool");
   this->_memoryPool.reset();
-  LOG_DEBUG_MSG("MercuryController destructor releasing protection domain");
+  LOG_DEBUG_MSG("RdmaController destructor releasing protection domain");
   this->_protectionDomain.reset();
-  LOG_DEBUG_MSG("MercuryController destructor deleting completion channel");
+  LOG_DEBUG_MSG("RdmaController destructor deleting completion channel");
   this->_completionChannel.reset();
-  LOG_DEBUG_MSG("MercuryController destructor done");
+  LOG_DEBUG_MSG("RdmaController destructor done");
 }
 
 /*---------------------------------------------------------------------------*/
-int MercuryController::startup() {
+int RdmaController::startup() {
   // Find the address of the I/O link device.
   RdmaDevicePtr linkDevice;
   try {
@@ -175,12 +176,12 @@ int MercuryController::startup() {
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-int MercuryController::cleanup(void) {
+int RdmaController::cleanup(void) {
   return 0;
 }
 
 /*---------------------------------------------------------------------------*/
-void MercuryController::freeRegion(RdmaMemoryRegion *region) {
+void RdmaController::freeRegion(RdmaMemoryRegion *region) {
   LOG_ERROR_MSG("Removed region free code, must replace it");
   //  if(!this->_memoryPool->is_from(region)) {
   //    throw std::runtime_error("Trying to delete a meory region we didn't allocate");
@@ -190,15 +191,15 @@ void MercuryController::freeRegion(RdmaMemoryRegion *region) {
 }
 
 /*---------------------------------------------------------------------------*/
-void MercuryController::refill_client_receives() {
+void RdmaController::refill_client_receives() {
   // make sure all clients have a pre-posted receive in their queues
-  std::for_each(_clients.begin(), _clients.end(), [](MercuryController::ClientMapPair _client) {
+  std::for_each(_clients.begin(), _clients.end(), [](RdmaController::ClientMapPair _client) {
     _client.second->refill_preposts(PREPOSTS);
   });
 }
 
 /*---------------------------------------------------------------------------*/
-void MercuryController::eventMonitor(int Nevents) {
+void RdmaController::eventMonitor(int Nevents) {
   const int eventChannel = 0;
   const int compChannel = 1;
   const int numFds = 2;
@@ -264,7 +265,7 @@ void MercuryController::eventMonitor(int Nevents) {
 }
 
 /*---------------------------------------------------------------------------*/
-void MercuryController::eventChannelHandler(void) {
+void RdmaController::eventChannelHandler(void) {
   int err;
 
   // Wait for the event (it should be here now).
@@ -407,7 +408,7 @@ void MercuryController::eventChannelHandler(void) {
 }
 
 /*---------------------------------------------------------------------------*/
-bool MercuryController::completionChannelHandler(uint64_t requestId) {
+bool RdmaController::completionChannelHandler(uint64_t requestId) {
   RdmaClientPtr client;
   try {
     // Get the notification event from the completion channel.
