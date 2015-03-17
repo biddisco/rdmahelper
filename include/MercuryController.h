@@ -105,7 +105,7 @@ public:
 
    int num_clients() { return _clients.size(); }
 
-   int refill_client_receives();
+   void refill_client_receives();
 
 private:
 

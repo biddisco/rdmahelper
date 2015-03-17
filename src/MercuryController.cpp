@@ -36,7 +36,7 @@
 #include <thread>
 #include <fstream>
 
-#include "cscs_messages.h"
+#include "rdma_messages.h"
 
 #define PREPOSTS 2
 
@@ -190,7 +190,7 @@ void MercuryController::freeRegion(RdmaMemoryRegion *region) {
 }
 
 /*---------------------------------------------------------------------------*/
-int MercuryController::refill_client_receives() {
+void MercuryController::refill_client_receives() {
   // make sure all clients have a pre-posted receive in their queues
   std::for_each(_clients.begin(), _clients.end(), [](MercuryController::ClientMapPair _client) {
     _client.second->refill_preposts(PREPOSTS);
