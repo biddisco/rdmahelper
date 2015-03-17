@@ -24,11 +24,9 @@
 //! \file  MercuryController.cc
 //! \brief Methods for bgcios::stdio::MercuryController class.
 #include "MercuryController.h"
-#include <ramdisk/include/services/common/RdmaError.h>
-#include <ramdisk/include/services/common/RdmaDevice.h>
-#include <ramdisk/include/services/common/RdmaCompletionQueue.h>
-#include <ramdisk/include/services/MessageUtility.h>
-#include <ramdisk/include/services/ServicesConstants.h>
+#include <RdmaError.h>
+#include <RdmaDevice.h>
+#include <RdmaCompletionQueue.h>
 #include <poll.h>
 #include <errno.h>
 #include <iomanip>
@@ -42,14 +40,7 @@
 
 #define PREPOSTS 2
 
-using namespace bgcios::stdio;
-
-/*
- #undef LOG_CIOS_DEBUG_MSG
- #undef LOG_DEBUG_MSG
- #define LOG_CIOS_DEBUG_MSG(x) LOG_CIOS_DEBUG_MSG(x);
- #define LOG_DEBUG_MSG(x) LOG_CIOS_DEBUG_MSG(x);
- */
+using namespace bgcios;
 
 const uint64_t LargeRegionSize = 8192;
 /*---------------------------------------------------------------------------*/
@@ -61,19 +52,19 @@ MercuryController::MercuryController(const char *device, const char *interface, 
 
 /*---------------------------------------------------------------------------*/
 MercuryController::~MercuryController() {
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor clearing clients");
+  LOG_DEBUG_MSG("MercuryController destructor clearing clients");
   _clients.clear();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor closing server");
+  LOG_DEBUG_MSG("MercuryController destructor closing server");
   this->_rdmaListener.reset();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor freeing regions");
+  LOG_DEBUG_MSG("MercuryController destructor freeing regions");
   this->_largeRegion.reset();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor freeing memory pool");
+  LOG_DEBUG_MSG("MercuryController destructor freeing memory pool");
   this->_memoryPool.reset();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor releasing protection domain");
+  LOG_DEBUG_MSG("MercuryController destructor releasing protection domain");
   this->_protectionDomain.reset();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor deleting completion channel");
+  LOG_DEBUG_MSG("MercuryController destructor deleting completion channel");
   this->_completionChannel.reset();
-  LOG_CIOS_DEBUG_MSG("MercuryController destructor done");
+  LOG_DEBUG_MSG("MercuryController destructor done");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -81,18 +72,18 @@ int MercuryController::startup() {
   // Find the address of the I/O link device.
   RdmaDevicePtr linkDevice;
   try {
-    LOG_CIOS_DEBUG_MSG("creating InfiniBand device for " << _device << " using interface " << _interface);
+    LOG_DEBUG_MSG("creating InfiniBand device for " << _device << " using interface " << _interface);
     linkDevice = RdmaDevicePtr(new RdmaDevice(_device, _interface));
   } catch (bgcios::RdmaError& e) {
     LOG_ERROR_MSG("error opening InfiniBand device: " << e.what());
     return e.errcode();
   }
-  LOG_CIOS_DEBUG_MSG(
+  LOG_DEBUG_MSG(
       "created InfiniBand device for " << linkDevice->getDeviceName() << " using interface "
       << linkDevice->getInterfaceName());
 
   in_addr_t addr2 = linkDevice->getAddress();
-  LOG_CIOS_DEBUG_MSG(
+  LOG_DEBUG_MSG(
       "Device returns IP address " << (int) ((uint8_t*) &addr2)[0] << "." << (int) ((uint8_t*) &addr2)[1] << "."
       << (int) ((uint8_t*) &addr2)[2] << "." << (int) ((uint8_t*) &addr2)[3] << ".");
 
@@ -125,7 +116,7 @@ int MercuryController::startup() {
     }
     if (_rdmaListener->getLocalPort() != this->_port) {
       this->_port = _rdmaListener->getLocalPort();
-      LOG_CIOS_DEBUG_MSG("RdmaServer port changed to " << this->_port);
+      LOG_DEBUG_MSG("RdmaServer port changed to " << std::dec << this->_port);
     }
   } catch (bgcios::RdmaError& e) {
     LOG_ERROR_MSG("error creating listening RDMA connection: " << e.what());
@@ -133,8 +124,8 @@ int MercuryController::startup() {
   }
 
   in_addr_t addr = linkDevice->getAddress();
-  LOG_CIOS_DEBUG_MSG(
-      "created listening RDMA connection on port " << this->_port << " using address " << linkDevice->getAddress()
+  LOG_DEBUG_MSG(
+      "created listening RDMA connection on port " << this->_port << " using address " << hexpointer(linkDevice->getAddress())
       << "\t IP address " << (int) ((uint8_t*) &addr)[0] << "." << (int) ((uint8_t*) &addr)[1] << "."
       << (int) ((uint8_t*) &addr)[2] << "." << (int) ((uint8_t*) &addr)[3] << ".");
 
@@ -145,7 +136,7 @@ int MercuryController::startup() {
     LOG_ERROR_MSG("error allocating protection domain: " << e.what());
     return e.errcode();
   }
-  LOG_CIOS_DEBUG_MSG("created protection domain " << _protectionDomain->getHandle());
+  LOG_DEBUG_MSG("created protection domain " << _protectionDomain->getHandle());
 
   // Create a completion channel object.
   try {
@@ -154,33 +145,32 @@ int MercuryController::startup() {
     LOG_ERROR_MSG("error constructing completion channel: " << e.what());
     return e.errcode();
   }
-  LOG_CIOS_DEBUG_MSG("created completion channel using fd " << _completionChannel->getChannelFd());
 
   // Create a memory pool for pinned buffers
   _memoryPool = std::make_shared < memory_pool > (_protectionDomain, 512, 8, 32);
 
 #ifdef USE_SHARED_RECEIVE_QUEUE
   // create a shared receive queue
-  LOG_CIOS_DEBUG_MSG("Creating SRQ shared receive queue ");
+  LOG_DEBUG_MSG("Creating SRQ shared receive queue ");
   _rdmaListener->create_srq(_protectionDomain);
 #endif
 
   // Listen for connections.
   int err = _rdmaListener->listen(256);
   if (err != 0) {
-    LOG_ERROR_MSG("error listening for new RDMA connections: " << bgcios::errorString(err));
+    LOG_ERROR_MSG("error listening for new RDMA connections: " << RdmaError::errorString(err));
     return err;
   }
-  LOG_CIOS_DEBUG_MSG("listening for new RDMA connections on fd " << _rdmaListener->getEventChannelFd());
+  LOG_DEBUG_MSG("listening for new RDMA connections on fd " << hexnumber(_rdmaListener->getEventChannelFd()));
 
   // Create a large memory region.
   _largeRegion = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
   err = _largeRegion->allocate(_protectionDomain, LargeRegionSize);
   if (err != 0) {
-    LOG_ERROR_MSG("error allocating large memory region: " << bgcios::errorString(err));
+    LOG_ERROR_MSG("error allocating large memory region: " << RdmaError::errorString(err));
     return err;
   }
-  LOG_CIOS_DEBUG_MSG("created large memory region with local key " << _largeRegion->getLocalKey());
+  LOG_DEBUG_MSG("created large memory region with local key " << _largeRegion->getLocalKey());
 
   return 0;
 }
@@ -248,7 +238,7 @@ void MercuryController::eventMonitor(int Nevents) {
         LOG_CIOS_TRACE_MSG("poll returned EINTR, continuing ...");
         continue;
       }
-      LOG_ERROR_MSG("error polling socket descriptors: " << bgcios::errorString(err));
+      LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
       return;
     }
 
@@ -324,7 +314,7 @@ void MercuryController::eventChannelHandler(void) {
     // Accept the connection from the new client.
     err = client->accept();
     if (err != 0) {
-      printf("error accepting client connection: %s\n", bgcios::errorString(err));
+      printf("error accepting client connection: %s\n", RdmaError::errorString(err));
       _clients.remove(client->getQpNum());
       _completionChannel->removeCompletionQ(completionQ);
       client->reject(); // Tell client the bad news
@@ -379,7 +369,7 @@ void MercuryController::eventChannelHandler(void) {
     if (err == 0) {
       LOG_CIOS_INFO_MSG(client->getTag() << "disconnected from " << client->getRemoteAddressString());
     } else {
-      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << bgcios::errorString(err));
+      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << RdmaError::errorString(err));
     }
 
     // Acknowledge the event (must be done before removing the rdma cm id).
@@ -389,14 +379,14 @@ void MercuryController::eventChannelHandler(void) {
     _clients.remove(qp);
 
     // Destroy connection object.
-    LOG_CIOS_DEBUG_MSG("destroying RDMA connection to client " << client->getRemoteAddressString());
+    LOG_DEBUG_MSG("destroying RDMA connection to client " << client->getRemoteAddressString());
     client.reset();
 
     // Remove completion queue from the completion channel.
     _completionChannel->removeCompletionQ(completionQ);
 
     // Destroy the completion queue.
-    LOG_CIOS_DEBUG_MSG("destroying completion queue " << completionQ->getHandle());
+    LOG_DEBUG_MSG("destroying completion queue " << completionQ->getHandle());
     completionQ.reset();
 
     break;
@@ -438,7 +428,7 @@ bool MercuryController::completionChannelHandler(uint64_t requestId) {
   }
 
   catch (const RdmaError& e) {
-    LOG_ERROR_MSG("error removing work completions from completion queue: " << bgcios::errorString(e.errcode()));
+    LOG_ERROR_MSG("error removing work completions from completion queue: " << RdmaError::errorString(e.errcode()));
   }
 
   return true;

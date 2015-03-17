@@ -28,13 +28,13 @@
 #define STDIO_HWSTDIOCONTROLLER_H
 
 #include "rdmahelper_defines.h"
-#include "rdmahelper_logging.h"
+#include "RdmaLogging.h"
 //
-#include <ramdisk/include/services/common/PointerMap.h>
-#include <ramdisk/include/services/common/RdmaCompletionChannel.h>
-#include <ramdisk/include/services/common/RdmaClient.h>
-#include <ramdisk/include/services/common/RdmaServer.h>
-#include <ramdisk/include/services/common/RdmaError.h>
+#include <PointerMap.h>
+#include <RdmaCompletionChannel.h>
+#include <RdmaClient.h>
+#include <RdmaServer.h>
+#include <RdmaError.h>
 #include <memory>
 #include <deque>
 #include <chrono>
@@ -42,9 +42,6 @@
 #include <functional>
 
 namespace bgcios
-{
-
-namespace stdio
 {
 
 //! \brief Handle standard I/O service messages when running on hardware.
@@ -216,8 +213,6 @@ private:
 
 //! Smart pointer for MercuryController object.
 typedef std::shared_ptr<MercuryController> MercuryControllerPtr;
-
-} // namespace stdio
 
 } // namespace bgcios
 
