@@ -90,6 +90,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+add_definitions(-DBOOST_LOG_DYN_LINK)
 
 #------------------------------------------------------------------------------
 # library sources
@@ -127,11 +128,13 @@ set(RDMAHELPER_includes
   ${BGSYS_includes}
 )
    
+ 
 add_library(rdmahelper
   ${RDMAHELPER_UTILITY_SRC}
   ${RDMAHELPER_SRC} 
 )
 
+message("Boost libraries are ${Boost_LIBRARIES}")
 target_link_libraries(rdmahelper
   ${IB_VERBS_LIBRARIES}
   ${RDMA_CM_LIBRARIES}
