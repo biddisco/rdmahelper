@@ -14,15 +14,22 @@
 #define RDMAHELPER_LOGGING_H_
 
 #include "rdmahelper_defines.h"
+#include <ostream>
+#include <iomanip>
+#include <sstream>
+#include <memory>
+#include <string>
+
+#define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
+#define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
+#define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::hex << p << " "
+#define decnumber(p)  "" << std::dec << p << " "
+#define ipaddress(p)  "" << std::dec << (int) ((uint8_t*) &p)[0] << "." << (int) ((uint8_t*) &p)[1] << \
+                                 "." << (int) ((uint8_t*) &p)[2] << "." << (int) ((uint8_t*) &p)[3] << " "
 
 #ifndef RDMAHELPER_DISABLE_LOGGING
 
   #ifdef RDMAHELPER_BOOST_LOGGING
-    #include <ostream>
-    #include <iomanip>
-    #include <sstream>
-    #include <memory>
-    #include <string>
 //#include <boost/format.hpp>
     #include <boost/log/trivial.hpp>
     #include <boost/log/expressions/formatter.hpp>
@@ -47,11 +54,7 @@ namespace keywords = boost::log::keywords;
 
     void initLogging();
 
-    #define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
-    #define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
-    #define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::hex << (uintptr_t)(p) << " "
-
-
+    // need to put this one back ...
     #define LOG_DECLARE_FILE(f)
 
     #define LOG_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << x;

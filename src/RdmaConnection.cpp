@@ -212,7 +212,7 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    tag << "[QP " << _cmId->qp->qp_num << "] ";
    _tag = tag.str();
 
-   LOG_CIOS_DEBUG_MSG(_tag << "created queue pair " << _cmId->qp->qp_num);
+   LOG_CIOS_DEBUG_MSG(_tag << "created queue pair " << decnumber(_cmId->qp->qp_num));
    return;
 }
 
