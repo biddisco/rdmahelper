@@ -107,6 +107,8 @@ public:
 
    void refill_client_receives();
 
+   RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
+
 private:
 
    void eventChannelHandler(void);
@@ -119,6 +121,9 @@ private:
    std::string _device;
    std::string _interface;
    int         _port;
+   uint32_t    _localAddr; // equivalent to in_addr_t
+   std::string _localAddrString;
+   std::string _localPortString;
 
    CompletionFunction _completionFunction;
    ConnectionFunction _connectionFunction;

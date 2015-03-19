@@ -37,6 +37,11 @@
 #include <thread>
 #include <fstream>
 
+// network stuff, only need inet_ntoa
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "rdma_messages.h"
 
 #define PREPOSTS 2
@@ -46,9 +51,10 @@ using namespace bgcios;
 const uint64_t LargeRegionSize = 8192;
 /*---------------------------------------------------------------------------*/
 RdmaController::RdmaController(const char *device, const char *interface, int port) {
-  this->_device = device;
+  this->_device    = device;
   this->_interface = interface;
-  this->_port = port;
+  this->_port      = port;
+  this->_localAddr = 0xFFFFFFFF;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -83,13 +89,15 @@ int RdmaController::startup() {
       "created InfiniBand device for " << linkDevice->getDeviceName() << " using interface "
       << linkDevice->getInterfaceName());
 
-  in_addr_t addr2 = linkDevice->getAddress();
-  LOG_DEBUG_MSG(
-      "Device returns IP address " << (int) ((uint8_t*) &addr2)[0] << "." << (int) ((uint8_t*) &addr2)[1] << "."
-      << (int) ((uint8_t*) &addr2)[2] << "." << (int) ((uint8_t*) &addr2)[3] << ".");
+  _localAddr       = linkDevice->getAddress();
+  _localAddrString = inet_ntoa(*(struct in_addr*)(&_localAddr));
+  LOG_DEBUG_MSG("Device returns IP address " << _localAddrString.c_str());
 
   // Create listener for RDMA connections.
   try {
+    //
+    // @TODO replace with hpx::util::batch_environment functions
+    //
     // if multiple servers are run, they should use the same port, so
     // only rank 0 should set it and the rest, copy it.
     int rank = 0;
@@ -117,18 +125,15 @@ int RdmaController::startup() {
     }
     if (_rdmaListener->getLocalPort() != this->_port) {
       this->_port = _rdmaListener->getLocalPort();
-      LOG_DEBUG_MSG("RdmaServer port changed to " << std::dec << this->_port);
+      LOG_DEBUG_MSG("RdmaServer port changed to " << std::dec << decnumber(this->_port));
     }
   } catch (bgcios::RdmaError& e) {
     LOG_ERROR_MSG("error creating listening RDMA connection: " << e.what());
     return e.errcode();
   }
 
-  in_addr_t addr = linkDevice->getAddress();
   LOG_DEBUG_MSG(
-      "created listening RDMA connection on port " << this->_port << " using address " << hexpointer(linkDevice->getAddress())
-      << "\t IP address " << (int) ((uint8_t*) &addr)[0] << "." << (int) ((uint8_t*) &addr)[1] << "."
-      << (int) ((uint8_t*) &addr)[2] << "." << (int) ((uint8_t*) &addr)[3] << ".");
+      "created listening RDMA connection on port " << decnumber(this->_port) << " IP address " << _localAddrString.c_str());
 
   // Create a protection domain object.
   try {
@@ -435,3 +440,42 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
   return true;
 }
 
+/*---------------------------------------------------------------------------*/
+// return the client
+RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port)
+{
+  std::string remoteAddr = inet_ntoa(*(struct in_addr*)(&remote_ip));
+  std::string remotePort = boost::lexical_cast<std::string>(remote_port);
+
+  RdmaCompletionQueuePtr completionQ;
+  try {
+    completionQ = std::make_shared < RdmaCompletionQueue >
+      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
+  } catch (bgcios::RdmaError& e) {
+    LOG_ERROR_MSG("error creating completion queue: " << e.what());
+  }
+
+  RdmaClientPtr newClient;
+  try {
+    newClient = std::make_shared<RdmaClient>
+      (_localAddrString, _localPortString, remoteAddr, remotePort);
+  } catch (bgcios::RdmaError& e) {
+    LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
+    completionQ.reset();
+  }
+
+  // make a connection
+  newClient->makePeer(_protectionDomain, completionQ);
+
+  // Add new client to map of active clients.
+  _clients.add(newClient->getQpNum(), newClient);
+
+  // Add completion queue to completion channel.
+  _completionChannel->addCompletionQ(completionQ);
+
+  newClient->setMemoryPool(_memoryPool);
+  this->refill_client_receives();
+
+  LOG_DEBUG_MSG("Added a server-server client with qpnum " << newClient->getQpNum());
+  return newClient;
+}
