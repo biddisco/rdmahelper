@@ -13,7 +13,7 @@
 #ifndef RDMAHELPER_LOGGING_H_
 #define RDMAHELPER_LOGGING_H_
 
-#include "rdmahelper_defines.h"
+#include "rdmahelper/rdmahelper_defines.h"
 #include <ostream>
 #include <iomanip>
 #include <sstream>

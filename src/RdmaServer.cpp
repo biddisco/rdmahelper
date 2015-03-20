@@ -67,7 +67,6 @@ RdmaServer::RdmaServer(in_addr_t addr, in_port_t port) : RdmaConnection()
 int
 RdmaServer::bind(in_addr_t addr, in_port_t port)
 {
-  LOG_DEBUG_MSG("Forcing port number to 0814 ");
    // Bind an address to the listening connection.
    memset(&_localAddress, 0, sizeof(_localAddress));
    _localAddress.sin_family = PF_INET;
@@ -77,8 +76,6 @@ RdmaServer::bind(in_addr_t addr, in_port_t port)
    LOG_CIOS_DEBUG_MSG(_tag << "port remapping using " << _localAddress.sin_port << " instead of " << port);
 #else
    _localAddress.sin_port = port;
-   _localAddress.sin_port = 814;
-   *(uint32_t*)(&port) = 814;
 #endif
    LOG_DEBUG_MSG(_tag << "binding to port " << decnumber(_localAddress.sin_port));
    int err = rdma_bind_addr(_cmId, (struct sockaddr *)&_localAddress);

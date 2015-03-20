@@ -43,13 +43,9 @@
 
 #define pointer uintptr_t
 
-#ifndef RDMAHELPER_LOGGING_H_
-//  #define LOG_ERROR_MSG(m) std::cout << "ERROR " << m << std::endl;
-#endif
-
 using namespace bgcios;
 
-struct memory_pool /*: boost::non_copyable */
+struct memory_pool : boost::noncopyable
 {
   typedef std::size_t size_type;
   //  typedef std::multimap<size_type, char *> large_chunks_type;
@@ -80,11 +76,6 @@ struct memory_pool /*: boost::non_copyable */
     std::cout << "large chunks: " << large_chunks_.size() << "\n";
   }*/
 
-
-
-//  virtual H5FDdsmPointer GetDataPointer(H5FDdsmAddr Addr = 0);
-//  virtual H5FDdsmBoolean WaitForCompletion();
-
 #ifndef __BGQ__
   void setProtectionDomain(RdmaProtectionDomainPtr pd) {
     DeallocateList();
@@ -107,8 +98,6 @@ struct memory_pool /*: boost::non_copyable */
 
    RdmaMemoryRegionPtr  allocate(size_t size=0);
    void                 deallocate(RdmaMemoryRegion *region);
-
-  bool  WaitForCompletion();
 
 #ifdef HPX_CONDITION
   typedef hpx::lcos::local::spinlock              mutex_type;

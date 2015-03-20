@@ -38,8 +38,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
     return !free_list_.empty();
   });
 
-  // Each block allocated may be released by the hpx garbage collection at some undetermined point, 
-  // so keep reference counts to self so that when the blocks are freed we don't get a segfault.
+  // Keep reference counts to self so that when the blocks are released we don't get a segfault.
   this->BufferReferenceCount++;
 
   // get a block
@@ -80,14 +79,6 @@ void memory_pool::deallocate(RdmaMemoryRegion *region)
 
   LOG_TRACE_MSG("notify one called ");
   return;
-}
-//----------------------------------------------------------------------------
-bool memory_pool::WaitForCompletion()
-{
-  while (free_list_.size()<this->max_chunks_) {
-//    hpx::this_thread::suspend(boost::posix_time::microseconds(5));
-  }
-  return 1;
 }
 //----------------------------------------------------------------------------
 RdmaMemoryRegionPtr memory_pool::AllocateRegisteredBlock(int length)
