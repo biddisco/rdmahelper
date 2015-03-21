@@ -23,7 +23,7 @@ memory_pool::~memory_pool()
   DeallocateList();
 }
 //----------------------------------------------------------------------------
-RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
+RdmaMemoryRegion *memory_pool::allocate(size_t length)
 {
   // we must protect our queue from thread contention
   lock_type2 lock(memBuffer_mutex);
@@ -54,7 +54,7 @@ RdmaMemoryRegionPtr memory_pool::allocate(size_t length)
   if (length>this->chunk_size_) {
     throw std::runtime_error("Fatal, block size too small");
   }
-  return buffer;
+  return buffer.get();
 }
 
 //----------------------------------------------------------------------------

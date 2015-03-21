@@ -66,15 +66,6 @@ struct memory_pool : boost::noncopyable
   }
 
   ~memory_pool();
-  /*
-  {
-    BOOST_FOREACH(large_chunks_type::value_type &v, large_chunks_)
-     {
-      free(v.second);
-     }
-    std::cout << "charged chunks: " << charged_chunks_ << "\n";
-    std::cout << "large chunks: " << large_chunks_.size() << "\n";
-  }*/
 
 #ifndef __BGQ__
   void setProtectionDomain(RdmaProtectionDomainPtr pd) {
@@ -96,8 +87,8 @@ struct memory_pool : boost::noncopyable
 
    RdmaMemoryRegionPtr AllocateRegisteredBlock(int length);
 
-   RdmaMemoryRegionPtr  allocate(size_t size=0);
-   void                 deallocate(RdmaMemoryRegion *region);
+   RdmaMemoryRegion *allocate(size_t size=0);
+   void              deallocate(RdmaMemoryRegion *region);
 
 #ifdef HPX_CONDITION
   typedef hpx::lcos::local::spinlock              mutex_type;
