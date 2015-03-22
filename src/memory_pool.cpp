@@ -29,7 +29,7 @@ RdmaMemoryRegion *memory_pool::allocate(size_t length)
   lock_type2 lock(memBuffer_mutex);
 
   // if we have not exceeded our max size, allocate a new block
-  if (free_list_.empty() && BlockList.size()<max_chunks_) {
+  if (free_list_.empty() && block_list_.size()<max_chunks_) {
     LOG_TRACE_MSG("Creating new Block as free list is empty but max chunks " << max_chunks_ << " not reached");
     AllocateRegisteredBlock(length);
   }
@@ -38,23 +38,23 @@ RdmaMemoryRegion *memory_pool::allocate(size_t length)
     return !free_list_.empty();
   });
 
-  // Keep reference counts to self so that when the blocks are released we don't get a segfault.
-  this->BufferReferenceCount++;
+  // Keep reference counts to self so that this pool is not deleted whilst blocks still exist
+  this->region_ref_count_++;
 
   // get a block
-  RdmaMemoryRegionPtr buffer = free_list_.front();
+  RdmaMemoryRegion *buffer = free_list_.front();
   free_list_.pop();
 
   LOG_TRACE_MSG("Popping Block"
-      << " region "    << hexpointer(buffer.get())
+      << " region "    << hexpointer(buffer)
       << " buffer "    << hexpointer(buffer->getAddress())
       << " length "    << hexlength(length)
       << " chunksize " << hexlength(chunk_size_)
-      << " size is   " << std::dec << free_list_.size() << " refcount " << this->BufferReferenceCount);
+      << " size is   " << std::dec << free_list_.size() << " refcount " << this->region_ref_count_);
   if (length>this->chunk_size_) {
     throw std::runtime_error("Fatal, block size too small");
   }
-  return buffer.get();
+  return buffer;
 }
 
 //----------------------------------------------------------------------------
@@ -63,25 +63,23 @@ void memory_pool::deallocate(RdmaMemoryRegion *region)
   // we must protect our mem buffer from thread contention
   lock_type2 lock(memBuffer_mutex);
 
-  RdmaMemoryRegionPtr r = BlockList[region];
-  // put the block back on the stack
-  free_list_.push(r);
+  // put the block back on the free list
+  free_list_.push(region);
 
-  // release one reference
-  this->BufferReferenceCount--;
+  // decrement one reference
+  this->region_ref_count_--;
 
   LOG_TRACE_MSG("Pushing Block"
       << " region  " << hexpointer(region)
-      << " buffer  " << hexpointer(r->getAddress())
-      << " size is " << std::dec << free_list_.size() << " refcount " << this->BufferReferenceCount);
+      << " buffer  " << hexpointer(region->getAddress())
+      << " size is " << std::dec << free_list_.size() << " refcount " << this->region_ref_count_);
   
   this->memBuffer_cond.notify_one();
-
-  LOG_TRACE_MSG("notify one called ");
+  LOG_TRACE_MSG("notify one called");
   return;
 }
 //----------------------------------------------------------------------------
-RdmaMemoryRegionPtr memory_pool::AllocateRegisteredBlock(int length)
+RdmaMemoryRegion* memory_pool::AllocateRegisteredBlock(int length)
 {
   LOG_DEBUG_MSG("AllocateRegisteredBlock for size " << hexlength(length));
   RdmaMemoryRegionPtr region = std::make_shared<RdmaMemoryRegion>();
@@ -92,18 +90,14 @@ RdmaMemoryRegionPtr memory_pool::AllocateRegisteredBlock(int length)
 #endif
   LOG_TRACE_MSG("Allocating registered block " << hexpointer(region->getAddress()) << hexlength(length));
 
-  free_list_.push(region);
-  this->BlockList[region.get()] = region;
+  free_list_.push(region.get());
+  block_list_[region.get()] = region;
   LOG_TRACE_MSG("Adding registered block to buffer " << hexpointer(region->getAddress()));
 
   // if anyone was waiting on the free list lock, then give it
   this->memBuffer_cond.notify_one();
 
-  //
-  // save the memory registration info
-  //
-//  this->BlockRegistrationMap[region.get()] = region;
-  return region;
+  return region.get();
 }
 
 //----------------------------------------------------------------------------
@@ -116,7 +110,7 @@ int memory_pool::AllocateList(std::size_t chunks)
   LOG_DEBUG_MSG("Allocating " << std::dec << num_chunks << " blocks of " << hexlength(this->chunk_size_));
   //
   for (std::size_t i=0; i<num_chunks; i++) {
-    RdmaMemoryRegionPtr buffer = this->AllocateRegisteredBlock(this->chunk_size_);
+    RdmaMemoryRegion *buffer = this->AllocateRegisteredBlock(this->chunk_size_);
     if (buffer == NULL) {
       this->max_chunks_ = i - 1;
       LOG_ERROR_MSG("Block Allocation Stopped at " << (i-1));
@@ -131,15 +125,15 @@ int memory_pool::AllocateList(std::size_t chunks)
 int memory_pool::DeallocateListBase()
 {
   // max_chunks_;
-  if (free_list_.size()!=BlockList.size() || this->BufferReferenceCount!=0) {
+  if (free_list_.size()!=block_list_.size() || this->region_ref_count_!=0) {
     LOG_ERROR_MSG("Deallocating free_list_ : Not all blocks were returned "
-        << free_list_.size() << " instead of " << BlockList.size() << " refcounts " << this->BufferReferenceCount);
+        << free_list_.size() << " instead of " << block_list_.size() << " refcounts " << this->region_ref_count_);
   }
   else {
     LOG_DEBUG_MSG("Free list deallocation OK");
     this->max_chunks_ = 0;
   }
-  BlockList.clear();
+  block_list_.clear();
   return(1);
 }
 
@@ -159,7 +153,7 @@ int memory_pool::DeallocateList()
   DeallocateListBase();
 
   while (!free_list_.empty()) {
-    RdmaMemoryRegionPtr buffer = free_list_.front();
+    RdmaMemoryRegion *buffer = free_list_.front();
     free_list_.pop();
 //    struct ibv_mr *mr = this->BlockRegistrationMap[buffer];
 //    if (ibv_dereg_mr(mr)) {

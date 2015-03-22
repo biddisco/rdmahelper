@@ -36,25 +36,23 @@
 
 //! \file  RdmaMemoryRegion.cc
 //! \brief Methods for bgcios::RdmaMemoryRegion class.
-// Includes
+
+#include "RdmaLogging.h"
+#include <RdmaMemoryRegion.h>
+#include <RdmaDevice.h>
+#include <RdmaError.h>
+//
 #include "stdio.h"
 #include "stdlib.h"
 #include <ostream>
 #include <sstream>
 #include <memory>
 #include <string>
-#include <boost/log/trivial.hpp>
-#include "RdmaLogging.h"
-#include <RdmaMemoryRegion.h>
-#include <RdmaDevice.h>
-#include <RdmaError.h>
 #include <iostream>
 #include <iomanip>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <bitset>
-
-//#include <stdint.h>
 
 #include <mutex>
 #include <thread>

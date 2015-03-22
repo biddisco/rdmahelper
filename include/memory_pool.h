@@ -18,7 +18,7 @@
 //
 
 //
-#ifdef HPX_CONDITION
+#ifdef RDMAHELPER_HPX_COMPATIBILITY
  #include <hpx/lcos/local/spinlock.hpp>
  #include <hpx/lcos/local/recursive_mutex.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
@@ -45,9 +45,12 @@
 
 using namespace bgcios;
 
+//template <typename Mutex = hpx::lcos::local::spinlock>
 struct memory_pool : boost::noncopyable
 {
   typedef std::size_t size_type;
+  typedef char value_type;
+
   //  typedef std::multimap<size_type, char *> large_chunks_type;
 
 #ifndef __BGQ__
@@ -60,7 +63,7 @@ struct memory_pool : boost::noncopyable
     isServer(true)
   , chunk_size_(chunk_size)
   , max_chunks_(max_chunks)
-  , BufferReferenceCount(0)
+  , region_ref_count_(0)
   {
     AllocateList(init_chunks);
   }
@@ -85,12 +88,12 @@ struct memory_pool : boost::noncopyable
    int   DeallocateList();
    int   DeallocateListBase();
 
-   RdmaMemoryRegionPtr AllocateRegisteredBlock(int length);
+   RdmaMemoryRegion *AllocateRegisteredBlock(int length);
 
    RdmaMemoryRegion *allocate(size_t size=0);
    void              deallocate(RdmaMemoryRegion *region);
 
-#ifdef HPX_CONDITION
+#ifdef RDMAHELPER_HPX_COMPATIBILITY
   typedef hpx::lcos::local::spinlock              mutex_type;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;
@@ -101,16 +104,15 @@ struct memory_pool : boost::noncopyable
   typedef std::unique_lock<std::mutex>  lock_type2;
   typedef std::condition_variable       condition_type;
 #endif
-  //
-  //
-  static const uint32_t H5FDdsm_VIRTUAL_DATA_ALIGNMENT = 65536;
-  //
-  std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> BlockList;
-  std::queue<RdmaMemoryRegionPtr>                  free_list_;
-  //
-  // Referencing for memory blocks and associated registered memory struct
-//  typedef std::pair<RdmaMemoryRegion*, struct ibv_mr *> memoryPair;
-//  std::map<RdmaMemoryRegion*, struct ibv_mr *> BlockRegistrationMap;
+
+  // not used any more, but keep for a while ...
+  static const uint32_t mempool_VIRTUAL_DATA_ALIGNMENT = 65536;
+
+  // every block we allocate will be added to this map so that
+  // we hold a reference count to them and prevent their deletion
+  std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
+  // blocks that have not been allocated are available from here
+  std::queue<RdmaMemoryRegion*>                    free_list_;
 
   memory_pool::mutex_type     memBuffer_mutex;
   memory_pool::condition_type memBuffer_cond;
@@ -123,11 +125,8 @@ struct memory_pool : boost::noncopyable
   bool                       isServer;
   std::size_t                chunk_size_;
   std::size_t                max_chunks_;
-  std::atomic<int>           BufferReferenceCount;
+  std::atomic<int>           region_ref_count_;
   mutable mutex_type         large_chunks_mtx_;
-  //large_chunks_type          large_chunks_;
-  //  std::vector<memory_chunk>  memory_chunks_;
-//  boost::atomic<std::size_t> RdmaMemoryRegionPtrged_chunks_;
  };
 
 typedef std::shared_ptr<memory_pool> memory_poolPtr;

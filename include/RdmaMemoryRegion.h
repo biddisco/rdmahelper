@@ -98,6 +98,18 @@ public:
      release();
    }
 
+   // overload operator->
+   unsigned char* operator->() const
+   {
+     return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
+   }
+
+   // overload operator*
+   unsigned char* operator*() const
+   {
+     return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
+   }
+
    //! \brief  Check if memory region has been allocated.
    //! \return True if memory region is allocated, otherwise false.
 
