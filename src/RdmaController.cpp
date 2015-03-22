@@ -476,6 +476,6 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   newClient->setMemoryPool(_memoryPool);
   this->refill_client_receives();
 
-  LOG_DEBUG_MSG("Added a server-server client with qpnum " << newClient->getQpNum());
+  LOG_DEBUG_MSG("Added a server-server client with qpnum " << decnumber(newClient->getQpNum()));
   return newClient;
 }

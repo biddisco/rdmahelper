@@ -88,6 +88,8 @@ public:
      return _clients.get(qp);
    }
 
+   memory_poolPtr getMemoryPool() { return _memoryPool; }
+
    template <typename Function>
    void for_each_client(Function lambda)
    {

@@ -26,7 +26,7 @@ memory_pool::~memory_pool()
 char *memory_pool::allocate(size_t length)
 {
   RdmaMemoryRegion *region = allocateRegion(length);
-  return reinterpret_cast<char*>(region->getAddress());
+  return static_cast<char*>(region->getAddress());
 }
 
 //----------------------------------------------------------------------------
@@ -65,7 +65,7 @@ RdmaMemoryRegion *memory_pool::allocateRegion(size_t length)
 }
 
 //----------------------------------------------------------------------------
-void memory_pool::deallocate(void *address)
+void memory_pool::deallocate(void *address, size_t size)
 {
   RdmaMemoryRegion *region = pointer_map_[address];
   deallocate(region);

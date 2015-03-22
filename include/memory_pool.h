@@ -13,24 +13,26 @@
 #ifndef __memory_pool_hpp_
 #define __memory_pool_hpp_
 
-//
-//#define HPX_CONDITION
-//
+#include <hpx/config/defines.hpp>
+#ifdef HPX_PARCELPORT_VERBS
+# ifndef RDMAHELPER_HPX_COMPATIBILITY
+#  define RDMAHELPER_HPX_COMPATIBILITY
+# endif
+#endif
 
-//
 #ifdef RDMAHELPER_HPX_COMPATIBILITY
  #include <hpx/lcos/local/spinlock.hpp>
  #include <hpx/lcos/local/recursive_mutex.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
+#else
+ #include <mutex>
+ #include <condition_variable>
 #endif
 //
 #include <atomic>
-#include <stack>
 #include <queue>
-#include <mutex>
 #include <vector>
 #include <map>
-#include <condition_variable>
 #include <iostream>
 //
 #include <boost/noncopyable.hpp>
@@ -46,12 +48,10 @@
 using namespace bgcios;
 
 //template <typename Mutex = hpx::lcos::local::spinlock>
-struct memory_pool : boost::noncopyable
+struct memory_pool // : boost::noncopyable
 {
   typedef std::size_t size_type;
-  typedef char value_type;
-
-  //  typedef std::multimap<size_type, char *> large_chunks_type;
+  typedef char        value_type;
 
 #ifndef __BGQ__
   memory_pool(RdmaProtectionDomainPtr pd, std::size_t chunk_size, std::size_t init_chunks, std::size_t max_chunks) :
@@ -92,7 +92,7 @@ struct memory_pool : boost::noncopyable
 
    RdmaMemoryRegion *allocateRegion(size_t size=0);
    char             *allocate(size_t size=0);
-   void              deallocate(void *address);
+   void              deallocate(void *address, size_t size=0);
    void              deallocate(RdmaMemoryRegion *region);
 
 #ifdef RDMAHELPER_HPX_COMPATIBILITY
@@ -122,8 +122,8 @@ struct memory_pool : boost::noncopyable
   // holds the registration information
   std::map<void *, RdmaMemoryRegion*>              pointer_map_;
 
-  memory_pool::mutex_type     memBuffer_mutex;
-  memory_pool::condition_type memBuffer_cond;
+  mutex_type     memBuffer_mutex;
+  condition_type memBuffer_cond;
 
 #ifndef __BGQ__
   RdmaProtectionDomainPtr    protection_domain_;
