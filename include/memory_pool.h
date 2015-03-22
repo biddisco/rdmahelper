@@ -90,7 +90,9 @@ struct memory_pool : boost::noncopyable
 
    RdmaMemoryRegion *AllocateRegisteredBlock(int length);
 
-   RdmaMemoryRegion *allocate(size_t size=0);
+   RdmaMemoryRegion *allocateRegion(size_t size=0);
+   char             *allocate(size_t size=0);
+   void              deallocate(void *address);
    void              deallocate(RdmaMemoryRegion *region);
 
 #ifdef RDMAHELPER_HPX_COMPATIBILITY
@@ -110,9 +112,15 @@ struct memory_pool : boost::noncopyable
 
   // every block we allocate will be added to this map so that
   // we hold a reference count to them and prevent their deletion
+  // this list is only used at start and finish
   std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
+
   // blocks that have not been allocated are available from here
   std::queue<RdmaMemoryRegion*>                    free_list_;
+
+  // used to map the internal memory address to the region that
+  // holds the registration information
+  std::map<void *, RdmaMemoryRegion*>              pointer_map_;
 
   memory_pool::mutex_type     memBuffer_mutex;
   memory_pool::condition_type memBuffer_cond;

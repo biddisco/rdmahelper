@@ -23,7 +23,14 @@ memory_pool::~memory_pool()
   DeallocateList();
 }
 //----------------------------------------------------------------------------
-RdmaMemoryRegion *memory_pool::allocate(size_t length)
+char *memory_pool::allocate(size_t length)
+{
+  RdmaMemoryRegion *region = allocateRegion(length);
+  return reinterpret_cast<char*>(region->getAddress());
+}
+
+//----------------------------------------------------------------------------
+RdmaMemoryRegion *memory_pool::allocateRegion(size_t length)
 {
   // we must protect our queue from thread contention
   lock_type2 lock(memBuffer_mutex);
@@ -55,6 +62,13 @@ RdmaMemoryRegion *memory_pool::allocate(size_t length)
     throw std::runtime_error("Fatal, block size too small");
   }
   return buffer;
+}
+
+//----------------------------------------------------------------------------
+void memory_pool::deallocate(void *address)
+{
+  RdmaMemoryRegion *region = pointer_map_[address];
+  deallocate(region);
 }
 
 //----------------------------------------------------------------------------
@@ -92,6 +106,7 @@ RdmaMemoryRegion* memory_pool::AllocateRegisteredBlock(int length)
 
   free_list_.push(region.get());
   block_list_[region.get()] = region;
+  pointer_map_[region->getAddress()] = region.get();
   LOG_TRACE_MSG("Adding registered block to buffer " << hexpointer(region->getAddress()));
 
   // if anyone was waiting on the free list lock, then give it

@@ -98,7 +98,7 @@ public:
   RdmaMemoryRegion *getFreeRegion(size_t size)
   {
     FUNC_START_DEBUG_MSG;
-    RdmaMemoryRegion* region = this->_memoryPool->allocate(size);
+    RdmaMemoryRegion* region = this->_memoryPool->allocateRegion(size);
     if (!region) {
       LOG_ERROR_MSG("Error creating free memory region");
     }
