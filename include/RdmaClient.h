@@ -42,7 +42,7 @@
 // Includes
 #include "RdmaConnection.h"
 #include "RdmaMemoryRegion.h"
-#include "memory_pool.h"
+#include "RdmaMemoryPool.h"
 #include <memory>
 #include <queue>
 

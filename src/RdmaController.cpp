@@ -153,7 +153,7 @@ int RdmaController::startup() {
   }
 
   // Create a memory pool for pinned buffers
-  _memoryPool = std::make_shared < memory_pool > (_protectionDomain, 512, 8, 32);
+  _memoryPool = std::make_shared < RdmaMemoryPool > (_protectionDomain, 512, 8, 32);
 
 #ifdef USE_SHARED_RECEIVE_QUEUE
   // create a shared receive queue

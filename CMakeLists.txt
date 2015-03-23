@@ -107,13 +107,13 @@ if (NOT BGQ)
       src/RdmaClient.cpp
       src/RdmaServer.cpp
       src/RdmaSharedReceiveQueue.cpp
-      src/memory_pool.cpp 
+      src/RdmaMemoryPool.cpp 
       src/RdmaController.cpp
     )
 else()
     set(RDMAHELPER_SRC
       src/RdmaLogging.cpp
-      src/memory_pool.cpp 
+      src/RdmaMemoryPool.cpp 
       src/CNKMemoryRegion.cpp
       src/CNKClient.cpp
     )

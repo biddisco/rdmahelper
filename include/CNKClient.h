@@ -42,7 +42,7 @@
 #include <memory>
 #include "RdmaConnectionBase.h"
 #include "CNKMemoryRegion.h"
-#include "memory_pool.h"
+#include "RdmaMemoryPool.h"
 #include <boost/lexical_cast.hpp>
 #include <iomanip>
 

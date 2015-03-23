@@ -25,7 +25,7 @@
 
 // Includes
 #include <memory>
-#include "memory_pool.h"
+#include "RdmaMemoryPool.h"
 #include <boost/lexical_cast.hpp>
 #include <iomanip>
 #include <mutex>
