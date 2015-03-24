@@ -126,7 +126,7 @@ RdmaCompletionChannel::isNonBlockMode(void)
 void
 RdmaCompletionChannel::addCompletionQ(RdmaCompletionQueuePtr cq)
 {
-   _queues.add(cq->getHandle(), cq);
+   _queues[cq->getHandle()] = cq;
    LOG_CIOS_TRACE_MSG("added completion queue " << cq->getHandle() << " to completion channel using fd " << hexnumber(_completionChannel->fd));
    return;
 }
@@ -134,7 +134,7 @@ RdmaCompletionChannel::addCompletionQ(RdmaCompletionQueuePtr cq)
 void
 RdmaCompletionChannel::removeCompletionQ(RdmaCompletionQueuePtr cq)
 {
-   _queues.remove(cq->getHandle());
+   _queues.erase(cq->getHandle());
    LOG_CIOS_TRACE_MSG("removed completion queue " << cq->getHandle() << " from completion channel using fd " << hexnumber(_completionChannel->fd));
    return;
 }
@@ -178,7 +178,7 @@ RdmaCompletionChannel::getEvent(void)
    }
 
    // Find the completion queue that has completions available.
-   RdmaCompletionQueuePtr completionQ = _queues.get(eventQ->handle);
+   RdmaCompletionQueuePtr completionQ = _queues[eventQ->handle];
    if (completionQ == NULL) {
 //    ibv_ack_cq_event(eventQ, 1);
       RdmaError e(ESRCH, "completion queue not found");

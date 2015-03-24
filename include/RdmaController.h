@@ -30,7 +30,6 @@
 #include "rdmahelper_defines.h"
 #include "RdmaLogging.h"
 //
-#include <PointerMap.h>
 #include <RdmaCompletionChannel.h>
 #include <RdmaClient.h>
 #include <RdmaServer.h>
@@ -40,6 +39,7 @@
 #include <chrono>
 #include <iostream>
 #include <functional>
+#include <map>
 
 namespace bgcios
 {
@@ -85,7 +85,7 @@ public:
    bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
    bgcios::RdmaProtectionDomainPtr getProtectionDomain() { return this->_protectionDomain; }
    bgcios::RdmaClientPtr getClient(uint32_t qp) {
-     return _clients.get(qp);
+     return _clients[qp];
    }
 
    memory_poolPtr getMemoryPool() { return _memoryPool; }
@@ -140,7 +140,7 @@ private:
    bgcios::RdmaCompletionChannelPtr _completionChannel;
 
    //! Map of all active clients indexed by queue pair number.
-   bgcios::PointerMap<uint32_t, RdmaClientPtr> _clients;
+   std::map<uint32_t, RdmaClientPtr> _clients;
 
    //! Large memory region for transferring data (used for both inbound and outbound data).
    bgcios::RdmaMemoryRegionPtr _largeRegion;

@@ -310,7 +310,7 @@ void RdmaController::eventChannelHandler(void) {
 
     LOG_DEBUG_MSG("adding a new client with qpnum " << client->getQpNum());
     // Add new client to map of active clients.
-    _clients.add(client->getQpNum(), client);
+    _clients[client->getQpNum()] = client;
 
     // Add completion queue to completion channel.
     _completionChannel->addCompletionQ(completionQ);
@@ -321,7 +321,7 @@ void RdmaController::eventChannelHandler(void) {
     err = client->accept();
     if (err != 0) {
       printf("error accepting client connection: %s\n", RdmaError::errorString(err));
-      _clients.remove(client->getQpNum());
+      _clients.erase(client->getQpNum());
       _completionChannel->removeCompletionQ(completionQ);
       client->reject(); // Tell client the bad news
       client.reset();
@@ -336,7 +336,7 @@ void RdmaController::eventChannelHandler(void) {
   case RDMA_CM_EVENT_ESTABLISHED: {
     LOG_DEBUG_MSG("RDMA_CM_EVENT_ESTABLISHED");
     // Find connection associated with this event.
-    RdmaClientPtr client = _clients.get(_rdmaListener->getEventQpNum());
+    RdmaClientPtr client = _clients[_rdmaListener->getEventQpNum()];
     LOG_CIOS_INFO_MSG(client->getTag() << "connection established with " << client->getRemoteAddressString());
 
     break;
@@ -346,7 +346,7 @@ void RdmaController::eventChannelHandler(void) {
     LOG_DEBUG_MSG("RDMA_CM_EVENT_DISCONNECTED");
     // Find connection associated with this event.
     uint32_t qp = _rdmaListener->getEventQpNum();
-    RdmaClientPtr client = _clients.get(qp);
+    RdmaClientPtr client = _clients[qp];
     RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
     /*
      while (client->getNumReceives()>0 ) {
@@ -382,7 +382,7 @@ void RdmaController::eventChannelHandler(void) {
     _rdmaListener->ackEvent();
 
     // Remove connection from map of active connections.
-    _clients.remove(qp);
+    _clients.erase(qp);
 
     // Destroy connection object.
     LOG_DEBUG_MSG("destroying RDMA connection to client " << client->getRemoteAddressString());
@@ -425,7 +425,7 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
       struct ibv_wc *completion = completionQ->popCompletion();
       LOG_DEBUG_MSG("Removing wr_id " << hexpointer(completion->wr_id));
       // Find the connection that received the message.
-      client = _clients.get(completion->qp_num);
+      client = _clients[completion->qp_num];
 
       if (this->_completionFunction) {
         this->_completionFunction(completion, client);
@@ -468,7 +468,7 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   newClient->makePeer(_protectionDomain, completionQ);
 
   // Add new client to map of active clients.
-  _clients.add(newClient->getQpNum(), newClient);
+  _clients[newClient->getQpNum()] = newClient;
 
   // Add completion queue to completion channel.
   _completionChannel->addCompletionQ(completionQ);

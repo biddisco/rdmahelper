@@ -41,10 +41,10 @@
 
 // Includes
 #include "RdmaCompletionQueue.h"
-#include "PointerMap.h"
 #include <inttypes.h>
 #include <infiniband/verbs.h>
 #include <memory>
+#include <map>
 
 namespace bgcios
 {
@@ -134,7 +134,7 @@ private:
    unsigned int _ackEventLimit;
 
    //! Map of completion queues using the completion channel indexed by completion queue handle.
-   bgcios::PointerMap<uint32_t, RdmaCompletionQueuePtr> _queues;
+   std::map<uint32_t, RdmaCompletionQueuePtr> _queues;
 
 };
 
