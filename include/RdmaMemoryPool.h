@@ -109,6 +109,10 @@ struct RdmaMemoryPool : boost::noncopyable
    void              deallocate(void *address, size_t size=0);
    void              deallocate(RdmaMemoryRegion *region);
 
+   RdmaMemoryRegion *RegionFromAddress(const char * const addr) {
+     return pointer_map_[addr];
+   }
+
    inline size_t chunk_granularity() { return chunk_size_; }
 
 //   void construct(typename std::allocator<T>::pointer p){
@@ -140,7 +144,7 @@ struct RdmaMemoryPool : boost::noncopyable
 
   // used to map the internal memory address to the region that
   // holds the registration information
-  std::map<void *, RdmaMemoryRegion*>              pointer_map_;
+  std::map<const void *, RdmaMemoryRegion*>              pointer_map_;
 
   mutex_type     memBuffer_mutex;
   condition_type memBuffer_cond;
