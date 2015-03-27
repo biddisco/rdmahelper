@@ -75,6 +75,7 @@
 #  include <boost/log/utility/manipulators/to_log.hpp>
 #  include <boost/log/utility/setup/console.hpp>
 #  include <boost/log/utility/setup/common_attributes.hpp>
+#  include <boost/preprocessor.hpp>
 
   namespace logging = boost::log;
   namespace src = boost::log::sources;
@@ -103,16 +104,41 @@
 #  define LOG_CIOS_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << x;
 #  define LOG_CIOS_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << x;
 
+#  define X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE(r, data, elem)    \
+    case elem : return BOOST_PP_STRINGIZE(elem);
+
+#  define DEFINE_ENUM_WITH_STRING_CONVERSIONS(name, enumerators)                \
+    enum name {                                                               \
+        BOOST_PP_SEQ_ENUM(enumerators)                                        \
+    };                                                                        \
+                                                                              \
+    inline const char* ToString(name v)                                       \
+    {                                                                         \
+        switch (v)                                                            \
+        {                                                                     \
+            BOOST_PP_SEQ_FOR_EACH(                                            \
+                X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE,          \
+                name,                                                         \
+                enumerators                                                   \
+            )                                                                 \
+            default: return "[Unknown " BOOST_PP_STRINGIZE(name) "]";         \
+        }                                                                     \
+    }
+
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(BGCIOS_type, (BGV_RDMADROP)(BGV_RDMA_REG)(BGV_RDMA_RMV)(BGV_WORK_CMP)(BGV_RECV_EVT))
+/*
 #  define BGV_RDMADROP 1
 #  define BGV_RDMA_REG 2
 #  define BGV_RDMA_RMV 3
 #  define BGV_WORK_CMP 4
 #  define BGV_RECV_EVT 5
+*/
+#  define IDSTR(ID) CIOSLOG_STR[ID]
 
-#  define CIOSLOGRDMA_REQ(ID,region,frags,fd) BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGRDMA_REQ " << ID << " " << region << " " << frags << " " << fd;
-#  define CIOSLOGMSG_WC(ID,wc)                BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGMSG_WC   " << ID << " " << ((struct ibv_wc *)wc)->wr_id;
-#  define CIOSLOGPOSTSEND(ID,send_wr,err)     BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGPOSTSEND " << ID << " " << send_wr.wr_id << " " << err;
-#  define CIOSLOGEVT_CH(ID,event)             BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGEVT_CH   " << ID << " " << event;
+#  define CIOSLOGRDMA_REQ(ID,region,frags,fd) BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGRDMA_REQ " << ToString((BGCIOS_type)(ID)) << " " << region << " " << frags << " " << fd;
+#  define CIOSLOGMSG_WC(ID,wc)                BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGMSG_WC   " << ToString((BGCIOS_type)(ID)) << " " << ((struct ibv_wc *)wc)->wr_id;
+#  define CIOSLOGPOSTSEND(ID,send_wr,err)     BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGPOSTSEND " << ToString((BGCIOS_type)(ID)) << " " << send_wr.wr_id << " " << err;
+#  define CIOSLOGEVT_CH(ID,event)             BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGEVT_CH   " << ToString((BGCIOS_type)(ID)) << " " << event;
 
 #endif // RDMAHELPER_DISABLE_LOGGING
 
