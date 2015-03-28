@@ -440,7 +440,7 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
    struct ibv_send_wr *badRequest;
    LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode)
        << " (" << request->opcode << ") work request to send queue with "
-       << request->num_sge << " sge, id=" << request->wr_id << ", imm_data=0x"
+       << request->num_sge << " sge, id=" << hexpointer(request->wr_id) << ", imm_data=0x"
        << hexpointer(request->imm_data));
    int err = ibv_post_send(_cmId->qp, request, &badRequest);
    if (err != 0) {
@@ -469,7 +469,6 @@ RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmed
    send_sge.addr = (uint64_t)region->getAddress();
    send_sge.length = region->getMessageLength();
    send_sge.lkey = region->getLocalKey();
-//   region->setMessageLength(0);
 
    // Build a send work request.
    struct ibv_send_wr send_wr;
@@ -497,6 +496,48 @@ RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmed
 //   ++_waitingSendPosted;
    return postSendQ(&send_wr);
 }
+
+uint64_t
+RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData)
+{
+   // Build scatter/gather element for outbound data.
+   struct ibv_sge send_sge[16]; // caution, don't use more than this
+   int total_length = 0;
+   for (int i=0; i<N; i++) {
+     send_sge[i].addr = (uint64_t)region[i]->getAddress();
+     send_sge[i].length = region[i]->getMessageLength();
+     send_sge[i].lkey = region[i]->getLocalKey();
+     total_length += send_sge[i].length;
+   }
+
+   // Build a send work request.
+   struct ibv_send_wr send_wr;
+   memset(&send_wr, 0, sizeof(send_wr));
+   send_wr.next = NULL;
+   send_wr.sg_list = send_sge;
+   send_wr.num_sge = N;
+   if (withImmediate) {
+      send_wr.opcode = IBV_WR_SEND_WITH_IMM;
+      send_wr.imm_data = immediateData;
+   }
+   else {
+      send_wr.opcode = IBV_WR_SEND;
+   }
+   if (signaled) {
+      send_wr.send_flags |= IBV_SEND_SIGNALED;
+   }
+   // use address for wr_id
+   send_wr.wr_id = (uint64_t)region;
+
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
+       << " num SGE " << N
+       << " with Length " << decnumber(total_length) << " " << hexpointer(send_sge[0].addr) << " ...");
+   // Post a send for outbound message.
+   ++_totalSendPosted;
+//   ++_waitingSendPosted;
+   return postSendQ(&send_wr);
+}
+
 /*
 uint64_t
 RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData)

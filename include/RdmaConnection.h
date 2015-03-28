@@ -173,6 +173,7 @@ public:
    //! \throws RdmaError.
 
    uint64_t postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData);
+   uint64_t postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData);
 
    //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
    //! \param  reqID is the request ID for the requested operation
