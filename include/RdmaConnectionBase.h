@@ -59,11 +59,8 @@ public:
 
   /*---------------------------------------------------------------------------*/
   uint64_t popReceive() {
-    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     uint64_t wr_id = _waitingReceives.front();
-    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     this->_waitingReceives.pop();
-    LOG_DEBUG_MSG("Before pop size of waiting receives is " << _waitingReceives.size())
     LOG_DEBUG_MSG("After pop of " << hexpointer(wr_id) << " size of waiting receives is " << _waitingReceives.size())
     return wr_id;
   }
@@ -83,7 +80,7 @@ public:
     LOG_DEBUG_MSG("Entering refill size of waiting receives is " << _waitingReceives.size())
     while (this->getNumReceives()<preposts) {
       LOG_DEBUG_MSG("Pre-Posting a receive to client");
-      RdmaMemoryRegion *region = this->getFreeRegion(512);
+      RdmaMemoryRegion *region = this->getFreeRegion(this->_memoryPool->default_chunk_size());
       this->postRecvRegionAsID(region, region->getLength(), false);
     }
   }

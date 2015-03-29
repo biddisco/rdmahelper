@@ -25,6 +25,9 @@ RdmaMemoryPool::~RdmaMemoryPool()
 //----------------------------------------------------------------------------
 char *RdmaMemoryPool::allocate(size_t length)
 {
+  if (length>chunk_size_) {
+    throw pinned_memory_exception("Chunk pool size exceeded");
+  }
   RdmaMemoryRegion *region = allocateRegion(length);
   return static_cast<char*>(region->getAddress());
 }

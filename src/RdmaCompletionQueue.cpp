@@ -145,7 +145,6 @@ RdmaCompletionQueue::removeCompletions(int numEntries)
    for (int i=0;i<nc;i++){
      CIOSLOGMSG_WC(BGV_WORK_CMP,_completions+i);
    }
-//#define CIOSLOGMSG_WC(ID,wc) logMsgQpNum(ID,(struct ibv_wc *)wc)
    _numCompletions += nc;
    if (nc>0) {
      LOG_CIOS_TRACE_MSG(_tag << "removed " << nc << " work completions from completion queue, " << _numCompletions-_nextCompletion << " are pending");

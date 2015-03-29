@@ -5,15 +5,15 @@
 // only declare this to C++ code
 //
 #ifdef __cplusplus
+// if the HPX configuration has set a default chunk size, use it
+#if defined(HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
+# define DEFAULT_MESSAGE_SIZE HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
+#else
+// deliberately small to trigger exceptions whilst debugging
+# define DEFAULT_MESSAGE_SIZE 256
+#endif
 
-//#include <UserMessages.h>
-
-namespace CSCS_user_message {
-
-  // small packet                                = 512,
-  // bgcios::ImmediateMessageSize                = 512
-  // sizeof(bgcios::MessageHeader)               = 32
-  // sizeof(CSCS_user_message::User_RDMA_Header) = 24
+namespace CSCS_user_message { 
 
   struct User_RDMA_Header {
       uint32_t tag;
@@ -22,7 +22,7 @@ namespace CSCS_user_message {
 
 //# define CSCS_UserMessageHeaderSize (sizeof(bgcios::MessageHeader) + sizeof(CSCS_user_message::User_RDMA_Header))
 # define CSCS_UserMessageHeaderSize (sizeof(CSCS_user_message::User_RDMA_Header))
-# define CSCS_UserMessageDataSize (512 - CSCS_UserMessageHeaderSize)
+# define CSCS_UserMessageDataSize (DEFAULT_MESSAGE_SIZE - CSCS_UserMessageHeaderSize)
 
   // For now we are using a borrowed header structure from bgcios, but in fact we don't need
   // most of it and will change to a simpler smaller structure in future

@@ -44,7 +44,19 @@
   #include "CNKMemoryRegion.h"
 #endif
 
-//#define pointer uintptr_t
+// if the HPX configuration has set a default chunk size, use it
+#if defined(HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
+# define DEFAULT_MEMORY_POOL_CHUNK_SIZE HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
+#else
+// deliberately small to trigger exceptions whilst debugging
+# define DEFAULT_MEMORY_POOL_CHUNK_SIZE 256
+#endif
+
+class pinned_memory_exception : public std::runtime_error
+{
+public:
+  pinned_memory_exception(const char *msg) : std::runtime_error(msg) {};
+};
 
 using namespace bgcios;
 
@@ -109,11 +121,11 @@ struct RdmaMemoryPool : boost::noncopyable
    void              deallocate(void *address, size_t size=0);
    void              deallocate(RdmaMemoryRegion *region);
 
-   RdmaMemoryRegion *RegionFromAddress(const char * const addr) {
+   RdmaMemoryRegion *RegionFromAddress(char * const addr) {
      return pointer_map_[addr];
    }
 
-   inline size_t chunk_granularity() { return chunk_size_; }
+   inline size_t default_chunk_size() { return chunk_size_; }
 
 //   void construct(typename std::allocator<T>::pointer p){
 //     new ((void*)p) T(47);
