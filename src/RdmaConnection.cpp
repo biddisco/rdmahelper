@@ -527,7 +527,7 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
       send_wr.send_flags |= IBV_SEND_SIGNALED;
    }
    // use address for wr_id
-   send_wr.wr_id = (uint64_t)region;
+   send_wr.wr_id = (uint64_t)region[0];
 
    LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
        << " num SGE " << N
