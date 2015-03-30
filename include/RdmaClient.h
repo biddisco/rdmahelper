@@ -86,7 +86,7 @@ public:
    //! \throws RdmaError.
 
    RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain,
-       RdmaCompletionQueuePtr completionQ, memory_poolPtr pool,
+       RdmaCompletionQueuePtr completionQ, RdmaMemoryPoolPtr pool,
        RdmaSharedReceiveQueuePtr SRQ) :
       RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
    {

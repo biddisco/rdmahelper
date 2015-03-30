@@ -173,6 +173,6 @@ struct RdmaMemoryPool : boost::noncopyable
   mutable mutex_type         large_chunks_mtx_;
  };
 
-typedef std::shared_ptr<RdmaMemoryPool> memory_poolPtr;
+typedef std::shared_ptr<RdmaMemoryPool> RdmaMemoryPoolPtr;
 
 #endif

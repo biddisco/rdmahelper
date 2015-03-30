@@ -86,7 +86,7 @@ public:
   }
 
   /*---------------------------------------------------------------------------*/
-  void setMemoryPool(memory_poolPtr pool)
+  void setMemoryPool(RdmaMemoryPoolPtr pool)
   {
     this->_memoryPool = pool;
   }
@@ -115,7 +115,7 @@ public:
   postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false) = 0;
 
 protected:
-  memory_poolPtr _memoryPool;
+  RdmaMemoryPoolPtr _memoryPool;
 
 };
 

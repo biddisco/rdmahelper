@@ -88,7 +88,7 @@ public:
      return _clients[qp];
    }
 
-   memory_poolPtr getMemoryPool() { return _memoryPool; }
+   RdmaMemoryPoolPtr getMemoryPool() { return _memoryPool; }
 
    template <typename Function>
    void for_each_client(Function lambda)
@@ -145,7 +145,7 @@ private:
    //! Large memory region for transferring data (used for both inbound and outbound data).
    bgcios::RdmaMemoryRegionPtr _largeRegion;
 
-   memory_poolPtr _memoryPool;
+   RdmaMemoryPoolPtr _memoryPool;
 
    //! \brief  Transfer data to the client from the large memory region.
    //! \param  address Address of remote memory region.
