@@ -62,6 +62,7 @@ using namespace bgcios;
 
 struct RdmaMemoryPool;
 
+#ifdef RDMAHELPER_HPX_COMPATIBILITY
 // specialize chunk pool allocator traits for this memory_chunk_pool
 namespace hpx { namespace traits
 {
@@ -72,6 +73,7 @@ namespace hpx { namespace traits
     struct is_chunk_allocator<util::detail::memory_chunk_pool_allocator<T,RdmaMemoryPool,M>>
       : std::true_type {};
 }}
+#endif
 
 //template <typename Mutex = hpx::lcos::local::spinlock>
 struct RdmaMemoryPool : boost::noncopyable
