@@ -44,7 +44,7 @@
 
 #include "rdma_messages.h"
 
-#define PREPOSTS 2
+#define PREPOSTS 16
 #define DEFAULT_CHUNKS_ALLOC 8
 
 // the maximum number of chunks we can alocate in our pool
@@ -213,12 +213,13 @@ void RdmaController::refill_client_receives() {
 }
 
 /*---------------------------------------------------------------------------*/
-void RdmaController::eventMonitor(int Nevents) {
+int RdmaController::eventMonitor(int Nevents) {
   const int eventChannel = 0;
   const int compChannel = 1;
   const int numFds = 2;
   //
   bool _done = false;
+  int events_handled = 0;
 
   pollfd pollInfo[numFds];
   int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
@@ -254,7 +255,7 @@ void RdmaController::eventMonitor(int Nevents) {
         continue;
       }
       LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
-      return;
+      return events_handled;
     }
 
     // Check for an event on the completion channel.
@@ -263,6 +264,7 @@ void RdmaController::eventMonitor(int Nevents) {
       completionChannelHandler(0);
       pollInfo[compChannel].revents = 0;
       Nevents--;
+      events_handled++;
     }
     // Check for an event on the event channel.
     else if (pollInfo[eventChannel].revents & POLLIN) {
@@ -270,12 +272,14 @@ void RdmaController::eventMonitor(int Nevents) {
       eventChannelHandler();
       pollInfo[eventChannel].revents = 0;
       Nevents--;
+      events_handled++;
     }
 
     if (Nevents <= 0) {
       _done = true;
     }
   }
+  return events_handled;
 }
 
 /*---------------------------------------------------------------------------*/

@@ -147,7 +147,7 @@ int RdmaMemoryPool::DeallocateListBase()
   // max_chunks_;
   if (free_list_.size()!=block_list_.size() || this->region_ref_count_!=0) {
     LOG_ERROR_MSG("Deallocating free_list_ : Not all blocks were returned "
-        << free_list_.size() << " instead of " << block_list_.size() << " refcounts " << this->region_ref_count_);
+        << decnumber(free_list_.size()) << " instead of " << decnumber(block_list_.size() )<< " refcounts " << decnumber(this->region_ref_count_));
   }
   else {
     LOG_DEBUG_MSG("Free list deallocation OK");

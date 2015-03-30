@@ -77,9 +77,9 @@ public:
    int cleanup(void);
 
    //! \brief  Monitor for events from all channels.
-   //! \return Nothing.
+   //! \return Number of events handled
 
-   void eventMonitor(int Nevents);
+   int eventMonitor(int Nevents);
 
    //! Listener for RDMA connections.
    bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }

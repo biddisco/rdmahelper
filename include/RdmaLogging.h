@@ -128,7 +128,7 @@
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(BGCIOS_type, (BGV_RDMADROP)(BGV_RDMA_REG)(BGV_RDMA_RMV)(BGV_WORK_CMP)(BGV_RECV_EVT))
 
 #  define CIOSLOGRDMA_REQ(ID,region,frags,fd) BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGRDMA_REQ " << ToString((BGCIOS_type)(ID)) << " " << region << " " << frags << " " << fd;
-#  define CIOSLOGMSG_WC(ID,wc)                BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGMSG_WC   " << ToString((BGCIOS_type)(ID)) << " " << ((struct ibv_wc *)wc)->wr_id;
+#  define CIOSLOGMSG_WC(ID,wc)                BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGMSG_WC   " << ToString((BGCIOS_type)(ID)) << " " << hexpointer(((struct ibv_wc *)wc)->wr_id);
 #  define CIOSLOGPOSTSEND(ID,send_wr,err)     BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGPOSTSEND " << ToString((BGCIOS_type)(ID)) << " " << hexpointer(send_wr.wr_id) << " " << err;
 #  define CIOSLOGEVT_CH(ID,event)             BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGEVT_CH   " << ToString((BGCIOS_type)(ID)) << " " << event;
 

@@ -501,20 +501,20 @@ uint64_t
 RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
-   struct ibv_sge send_sge[16]; // caution, don't use more than this
+   struct ibv_sge send_sge[4]; // caution, don't use more than this
    int total_length = 0;
    for (int i=0; i<N; i++) {
-     send_sge[i].addr = (uint64_t)region[i]->getAddress();
+     send_sge[i].addr   = (uint64_t)region[i]->getAddress();
      send_sge[i].length = region[i]->getMessageLength();
-     send_sge[i].lkey = region[i]->getLocalKey();
-     total_length += send_sge[i].length;
+     send_sge[i].lkey   = region[i]->getLocalKey();
+     total_length      += send_sge[i].length;
    }
 
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
    send_wr.next = NULL;
-   send_wr.sg_list = send_sge;
+   send_wr.sg_list = &send_sge[0];
    send_wr.num_sge = N;
    if (withImmediate) {
       send_wr.opcode = IBV_WR_SEND_WITH_IMM;
@@ -530,7 +530,7 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    send_wr.wr_id = (uint64_t)region[0];
 
    LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
-       << " num SGE " << N
+       << " num SGE " << send_wr.num_sge
        << " with Length " << decnumber(total_length) << " " << hexpointer(send_sge[0].addr) << " ...");
    // Post a send for outbound message.
    ++_totalSendPosted;
