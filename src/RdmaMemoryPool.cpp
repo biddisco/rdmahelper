@@ -99,8 +99,7 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
 //----------------------------------------------------------------------------
 RdmaMemoryRegion* RdmaMemoryPool::AllocateRegisteredBlock(int length)
 {
-  LOG_DEBUG_MSG("AllocateRegisteredBlock with this pointer " << hexpointer(this))
-  LOG_DEBUG_MSG("AllocateRegisteredBlock for size " << hexlength(length));
+  LOG_DEBUG_MSG("AllocateRegisteredBlock with this pointer " << hexpointer(this) << " size " << hexlength(length));
   RdmaMemoryRegionPtr region = std::make_shared<RdmaMemoryRegion>();
 #ifndef __BGQ__
   region->allocate(protection_domain_, length);

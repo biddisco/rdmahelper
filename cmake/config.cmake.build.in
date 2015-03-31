@@ -27,7 +27,7 @@ set (rdmahelper_VERSION_MINOR  @rdmahelper_VERSION_MINOR@)
 
 #-----------------------------------------------------------------------------
 # Don't include targets if this file is being picked up by another
-# project which has already build hdf5 as a subproject
+# project which has already built it as a subproject
 #-----------------------------------------------------------------------------
 if (NOT TARGET rdmahelper)
   include (${SELF_DIR}/@rdmahelper_PACKAGE@-targets.cmake)

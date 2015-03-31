@@ -90,7 +90,9 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_definitions(-DBOOST_LOG_DYN_LINK)
+if (NOT ${Boost_USE_STATIC_LIBS})
+  add_definitions(-DBOOST_LOG_DYN_LINK)
+endif()
 
 #------------------------------------------------------------------------------
 # library sources
