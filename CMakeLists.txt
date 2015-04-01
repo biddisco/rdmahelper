@@ -33,6 +33,10 @@ else()
   add_config_define(RDMAHELPER_DISABLE_LOGGING)
 endif()
 
+if (NOT ${Boost_USE_STATIC_LIBS})
+  add_config_define(BOOST_LOG_DYN_LINK)
+endif()
+
 #------------------------------------------------------------------------------
 # Detect Platform to setup special flags for specific machines
 #------------------------------------------------------------------------------
@@ -89,10 +93,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include 
   ${CMAKE_CURRENT_BINARY_DIR}
 )
-
-if (NOT ${Boost_USE_STATIC_LIBS})
-  add_definitions(-DBOOST_LOG_DYN_LINK)
-endif()
 
 #------------------------------------------------------------------------------
 # library sources
