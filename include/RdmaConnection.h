@@ -185,6 +185,9 @@ public:
    //! \return error status for the posted operation.
    //!
 
+   uint64_t postRead(RdmaMemoryRegion *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length);
+
+
 int
 postRdmaRead(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
                                              uint32_t localKey,  uint64_t localAddr,

@@ -538,6 +538,35 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    return postSendQ(&send_wr);
 }
 
+uint64_t RdmaConnection::postRead(RdmaMemoryRegion *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length)
+{
+    // Build scatter/gather element for inbound message.
+    struct ibv_send_wr *badRequest;
+    struct ibv_sge read_sge;
+    read_sge.addr   = (uint64_t)localregion->getAddress();
+    read_sge.length = length;
+    read_sge.lkey   = localregion->getLocalKey();
+
+    // Build a send work request.
+    struct ibv_send_wr send_wr;
+    memset(&send_wr, 0, sizeof(send_wr));
+    send_wr.next                = NULL;
+    send_wr.sg_list             = &read_sge;
+    send_wr.num_sge             = 1;
+    send_wr.opcode              = IBV_WR_RDMA_READ;
+    send_wr.send_flags          = IBV_SEND_SIGNALED; // Force completion queue to be posted with result.
+    send_wr.wr_id               = (uint64_t)localregion;
+    send_wr.wr.rdma.remote_addr = (uint64_t)remoteAddr;
+    send_wr.wr.rdma.rkey        = remoteKey;
+
+    // Post a send to read data.
+    LOG_TRACE_MSG(_tag << "Posted Read wr_id " << hexpointer(send_wr.wr_id)
+        << " with Length " << decnumber(read_sge.length) << " " << hexpointer(read_sge.addr)
+        << " remote key " << decnumber(send_wr.wr.rdma.rkey) << " remote addr " << hexpointer(send_wr.wr.rdma.remote_addr));
+    ++_totalReadPosted;
+    return postSendQ(&send_wr);
+}
+
 /*
 uint64_t
 RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData)
