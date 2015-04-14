@@ -31,6 +31,14 @@
     "." << (int) ((uint8_t*) &p)[2] << "." << (int) ((uint8_t*) &p)[3] << " "
 
 //
+// HPX support
+//
+#  ifdef RDMAHELPER_HPX_COMPATIBILITY
+#    include <hpx/config.hpp>
+#    include <hpx/hpx_fwd.hpp>
+#  endif
+
+//
 // Logging disabled, #define all macros to be empty
 //
 #ifdef RDMAHELPER_DISABLE_LOGGING
