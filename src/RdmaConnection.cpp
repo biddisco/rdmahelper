@@ -538,6 +538,41 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    return postSendQ(&send_wr);
 }
 
+uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData)
+{
+    // Build scatter/gather element for outbound data.
+    struct ibv_sge send_sge;
+    send_sge.addr = NULL;
+    send_sge.length = 0;
+    send_sge.lkey = 0;
+
+    // Build a send work request.
+    struct ibv_send_wr send_wr;
+    memset(&send_wr, 0, sizeof(send_wr));
+    send_wr.next = NULL;
+    send_wr.sg_list = NULL;
+    send_wr.num_sge = 0;
+    if (withImmediate) {
+       send_wr.opcode = IBV_WR_SEND_WITH_IMM;
+       send_wr.imm_data = immediateData;
+    }
+    else {
+       send_wr.opcode = IBV_WR_SEND;
+    }
+    if (signaled) {
+       send_wr.send_flags |= IBV_SEND_SIGNALED;
+    }
+    // use address for wr_id
+    send_wr.wr_id = (uint64_t)region;
+
+    LOG_TRACE_MSG(_tag << "Posted Zero byte Send wr_id " << hexpointer(send_wr.wr_id)
+        << " with Length " << decnumber(send_sge.length) << " " << hexpointer(send_sge.addr));
+    // Post a send for outbound message.
+    ++_totalSendPosted;
+ //   ++_waitingSendPosted;
+    return postSendQ(&send_wr);
+}
+
 uint64_t RdmaConnection::postRead(RdmaMemoryRegion *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length)
 {
     // Build scatter/gather element for inbound message.
