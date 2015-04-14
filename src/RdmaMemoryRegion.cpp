@@ -42,8 +42,9 @@
 #include <RdmaDevice.h>
 #include <RdmaError.h>
 //
-#include "stdio.h"
-#include "stdlib.h"
+#include <unistd.h>
+//#include "stdio.h"
+//#include "stdlib.h"
 #include <ostream>
 #include <sstream>
 #include <memory>
@@ -283,8 +284,9 @@ int RdmaMemoryRegion::allocateFromBgvrnicDevice(RdmaProtectionDomainPtr pd,
               << region_size);
       return err;
     }
-  } else
+  } else {
     LOG_ERROR_MSG("Unable to verify large region size.");
+  }
 
   // Allocate storage for the memory region.
   void *buffer = ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, _fd,
