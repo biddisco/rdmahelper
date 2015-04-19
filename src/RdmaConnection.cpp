@@ -529,7 +529,7 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    // use address for wr_id
    send_wr.wr_id = (uint64_t)region[0];
 
-   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
+   LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id) << hexpointer((uint64_t)region[1])
        << " num SGE " << send_wr.num_sge
        << " with Length " << decnumber(total_length) << " " << hexpointer(send_sge[0].addr) << " ...");
    // Post a send for outbound message.

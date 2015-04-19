@@ -119,18 +119,18 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
     if (buffer != MAP_FAILED) {
       LOG_DEBUG_MSG(
           "allocated storage for memory region with mmap OK, vlength = "
-              << length);
+              << hexnumber(length));
     } else if (buffer == MAP_FAILED) {
       int err = errno;
       LOG_ERROR_MSG(
-          "error allocating storage using mmap for memory region: " << length
+          "error allocating storage using mmap for memory region: " << hexnumber(length)
               << " " << RdmaError::errorString(err));
       return err;
     }
 #else
     void *buffer = malloc(length);
     if (buffer != NULL) {
-      LOG_DEBUG_MSG("allocated storage for memory region with malloc OK " << length);
+      LOG_DEBUG_MSG("allocated storage for memory region with malloc OK " << hexnumber(length));
     }
 #endif
 
@@ -148,7 +148,7 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
       return ENOMEM;
     } else {
       LOG_DEBUG_MSG(
-          "OK registering ibv_reg_mr with flags : " << " " << length);
+          "OK registering ibv_reg_mr with flags : " << " " << hexnumber(accessFlags));
     }
 
     memoryRegion = regionList[attempt];

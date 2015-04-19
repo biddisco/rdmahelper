@@ -147,7 +147,7 @@ RdmaCompletionQueue::removeCompletions(int numEntries)
    }
    _numCompletions += nc;
    if (nc>0) {
-     LOG_CIOS_TRACE_MSG(_tag << "removed " << nc << " work completions from completion queue, " << _numCompletions-_nextCompletion << " are pending");
+     LOG_CIOS_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
    }
    _totalCompletions += _numCompletions;
 
