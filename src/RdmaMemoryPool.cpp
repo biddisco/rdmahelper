@@ -35,7 +35,7 @@ char *RdmaMemoryPool::allocate(size_t length)
 //----------------------------------------------------------------------------
 RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 {
-  LOG_DEBUG_MSG("allocate region with this pointer " << hexpointer(this))
+  //LOG_DEBUG_MSG("allocate region with this pointer " << hexpointer(this))
   // we must protect our queue from thread contention
   lock_type2 lock(memBuffer_mutex);
 
@@ -61,7 +61,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
       << " buffer "    << hexpointer(buffer->getAddress())
       << " length "    << hexlength(length)
       << " chunksize " << hexlength(chunk_size_)
-      << " size is   " << std::dec << free_list_.size() << " refcount " << this->region_ref_count_);
+      << " free "      << decnumber(free_list_.size()) << " used " << decnumber(this->region_ref_count_));
   if (length>this->chunk_size_) {
     throw std::runtime_error("Fatal, block size too small");
   }
@@ -90,7 +90,7 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
   LOG_TRACE_MSG("Pushing Block"
       << " region  " << hexpointer(region)
       << " buffer  " << hexpointer(region->getAddress())
-      << " size is " << std::dec << free_list_.size() << " refcount " << this->region_ref_count_);
+      << " free "    << decnumber(free_list_.size()) << " used " << decnumber(this->region_ref_count_));
   
   this->memBuffer_cond.notify_one();
   LOG_TRACE_MSG("notify one called");

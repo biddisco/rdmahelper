@@ -185,8 +185,8 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    memset(&qpAttributes, 0, sizeof qpAttributes);
    qpAttributes.cap.max_send_wr = 4096; // maxWorkRequests;
    qpAttributes.cap.max_recv_wr = 4096; // maxWorkRequests;
-   qpAttributes.cap.max_send_sge = 1; //6;
-   qpAttributes.cap.max_recv_sge = 1; // 6;
+   qpAttributes.cap.max_send_sge = 6; //6;
+   qpAttributes.cap.max_recv_sge = 6; // 6;
    qpAttributes.qp_context = this; // Save the pointer this object.
    qpAttributes.sq_sig_all = signalSendQueue;
    qpAttributes.qp_type = IBV_QPT_RC;
@@ -212,7 +212,8 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    tag << "[QP " << _cmId->qp->qp_num << "] ";
    _tag = tag.str();
 
-   LOG_CIOS_DEBUG_MSG(_tag << "created queue pair " << decnumber(_cmId->qp->qp_num));
+   LOG_CIOS_DEBUG_MSG(_tag << "created queue pair " << decnumber(_cmId->qp->qp_num)
+           << " max inline data is " << hexnumber(qpAttributes.cap.max_inline_data));
    return;
 }
 
@@ -294,7 +295,7 @@ RdmaConnection::accept(void)
    struct rdma_conn_param param;
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
-   param.initiator_depth = 1;
+   param.initiator_depth = 2;
    int err = rdma_accept(_cmId, &param);
    if (err != 0) {
       err = abs(err);
@@ -358,7 +359,7 @@ RdmaConnection::connect(void)
    struct rdma_conn_param param;
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
-   param.initiator_depth = 1;
+   param.initiator_depth = 2;
    param.retry_count = 5;
    int rc = rdma_connect(_cmId, &param);
    if (rc != 0) {
@@ -438,10 +439,10 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 {
    // Post the send request.
    struct ibv_send_wr *badRequest;
-   LOG_TRACE_MSG(_tag << "posting " << wr_opcode_str(request->opcode)
-       << " (" << request->opcode << ") work request to send queue with "
-       << request->num_sge << " sge, id=" << hexpointer(request->wr_id) << ", imm_data=0x"
-       << hexpointer(request->imm_data));
+   LOG_TRACE_MSG(_tag << "posting "
+           << wr_opcode_str(request->opcode) << " (" << request->opcode << ") work request to send queue with " << request->num_sge
+           << " sge, id=" << hexpointer(request->wr_id)
+           << ", imm_data=" << hexuint32(request->imm_data));
    int err = ibv_post_send(_cmId->qp, request, &badRequest);
    if (err != 0) {
       if (err==EINVAL)
@@ -566,9 +567,9 @@ uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bo
     send_wr.wr_id = (uint64_t)region;
 
     LOG_TRACE_MSG(_tag << "Posted Zero byte Send wr_id " << hexpointer(send_wr.wr_id)
-        << " with Length " << decnumber(send_sge.length) << " " << hexpointer(send_sge.addr));
-    // Post a send for outbound message.
-    ++_totalSendPosted;
+        << " with Length " << decnumber(send_sge.length)
+        << " address " << hexpointer(send_sge.addr)
+        << " total send posted " << ++_totalSendPosted);
  //   ++_waitingSendPosted;
     return postSendQ(&send_wr);
 }

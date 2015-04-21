@@ -211,7 +211,7 @@ int RdmaMemoryRegion::allocate(RdmaProtectionDomainPtr pd, size_t length) {
     _frags = 1;
   }
 
-  LOG_CIOS_DEBUG_MSG("allocated memory region " << this << " with local key " << getLocalKey() << " at address " << getAddress() << " with length " << hexlength(getLength()));
+  LOG_CIOS_DEBUG_MSG("allocated memory region " << hexpointer(this) << " with local key " << getLocalKey() << " at address " << getAddress() << " with length " << hexlength(getLength()));
   CIOSLOGRDMA_REQ(BGV_RDMA_REG, _region, _frags, _fd);
   return 0;
 }

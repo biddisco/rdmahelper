@@ -24,6 +24,7 @@
 // useful macros for formatting messages
 //
 #define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
+#define hexuint32(p)  "0x" << std::setfill('0') << std::setw( 8) << std::hex << (uint32_t)(p) << " "
 #define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
 #define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::hex << p << " "
 #define decnumber(p)  "" << std::dec << p << " "

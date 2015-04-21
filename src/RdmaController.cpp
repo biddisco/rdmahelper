@@ -44,7 +44,7 @@
 
 #include "rdma_messages.h"
 
-#define PREPOSTS 16
+#define PREPOSTS 4
 #define DEFAULT_CHUNKS_ALLOC 8
 
 // the maximum number of chunks we can alocate in our pool
@@ -351,7 +351,10 @@ void RdmaController::eventChannelHandler(void) {
     // Find connection associated with this event.
     RdmaClientPtr client = _clients[_rdmaListener->getEventQpNum()];
     LOG_CIOS_INFO_MSG(client->getTag() << "connection established with " << client->getRemoteAddressString());
-
+    if (this->_connectionFunction) {
+        LOG_DEBUG_MSG("calling connection callback ");
+        this->_connectionFunction(std::make_pair(client->getQpNum(), 0), client);
+    }
     break;
   }
 
@@ -436,7 +439,7 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
     while (completionQ->removeCompletions() != 0) {
       // Get the next work completion.
       struct ibv_wc *completion = completionQ->popCompletion();
-      LOG_DEBUG_MSG("Removing wr_id " << hexpointer(completion->wr_id));
+      LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion->wr_id));
       // Find the connection that received the message.
       client = _clients[completion->qp_num];
 
