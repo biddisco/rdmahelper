@@ -598,6 +598,9 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
      return _srq->get_SRQ();
    }
 
+   bool getInitiatedConnection() { return _initiated_connection; }
+   void setInitiatedConnection(bool i) { _initiated_connection = i; }
+
 protected:
 
    //! \brief  Initialize object to known state.
@@ -666,10 +669,13 @@ protected:
    //! Total number of rdma write operations posted to queue pair.
    uint64_t _totalWritePosted;
 
+   //! if the client connected to the server, then set this flag so that
+   //! at shutdown, we use the correct flag for disconnect(mode)
+   bool _initiated_connection;
 };
 
 //! Smart pointer for RdmaConnection object.
-  typedef std::shared_ptr<RdmaConnection> RdmaConnectionPtr;
+typedef std::shared_ptr<RdmaConnection> RdmaConnectionPtr;
 
 } // namespace bgcios
 

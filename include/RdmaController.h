@@ -71,6 +71,9 @@ public:
    typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
    void setConnectionFunction(ConnectionFunction f) { this->_connectionFunction = f;}
 
+   typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
+   void setDonnectionFunction(DisconnectionFunction f) { this->_disconnectionFunction = f;}
+
    //! \brief  Close all connections needed by the service daemon.
    //! \return 0 when successful, errno when unsuccessful.
 
@@ -110,6 +113,7 @@ public:
    void refill_client_receives();
 
    RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
+   void removeServerToServerConnection(RdmaClientPtr client);
 
 private:
 
@@ -127,8 +131,9 @@ private:
    std::string _localAddrString;
    std::string _localPortString;
 
-   CompletionFunction _completionFunction;
-   ConnectionFunction _connectionFunction;
+   CompletionFunction       _completionFunction;
+   ConnectionFunction       _connectionFunction;
+   DisconnectionFunction    _disconnectionFunction;
 
    //! Listener for RDMA connections.
    bgcios::RdmaServerPtr _rdmaListener;

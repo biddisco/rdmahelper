@@ -495,3 +495,35 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   LOG_DEBUG_MSG("Added a server-server client with qpnum " << decnumber(newClient->getQpNum()));
   return newClient;
 }
+
+/*---------------------------------------------------------------------------*/
+void RdmaController::removeServerToServerConnection(RdmaClientPtr client)
+{
+    LOG_DEBUG_MSG("Removing Server-Server client object");
+    // Find connection associated with this event.
+    RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
+    uint32_t qp = client->getQpNum();
+
+    // disconnect initiated by us
+    int err = client->disconnect(true);
+    if (err == 0) {
+      LOG_CIOS_INFO_MSG(client->getTag() << "disconnected from " << client->getRemoteAddressString());
+    } else {
+      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << RdmaError::errorString(err));
+    }
+
+    // Remove connection from map of active connections.
+    _clients.erase(qp);
+
+    // Destroy connection object.
+    LOG_DEBUG_MSG("destroying RDMA connection to client " << client->getRemoteAddressString());
+    client.reset();
+
+    // Remove completion queue from the completion channel.
+    _completionChannel->removeCompletionQ(completionQ);
+
+    // Destroy the completion queue.
+    LOG_DEBUG_MSG("destroying completion queue " << completionQ->getHandle());
+    completionQ.reset();
+}
+

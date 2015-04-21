@@ -149,6 +149,7 @@ RdmaConnection::init(void)
    _totalSendPosted = 0;
    _totalReadPosted = 0;
    _totalWritePosted = 0;
+   _initiated_connection = false;
    return;
 }
 
@@ -403,7 +404,7 @@ RdmaConnection::connect(void)
 int
 RdmaConnection::disconnect(bool initiate)
 {
-LOG_DEBUG_MSG("RdmaConnection::disconnect");
+    LOG_DEBUG_MSG("RdmaConnection::disconnect");
    // Disconnect the connection.
    int err = rdma_disconnect(_cmId);
    if (err != 0) {
