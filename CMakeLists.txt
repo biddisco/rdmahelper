@@ -33,7 +33,8 @@ else()
   add_config_define(RDMAHELPER_DISABLE_LOGGING)
 endif()
 
-if (NOT ${Boost_USE_STATIC_LIBS})
+if (NOT Boost_USE_STATIC_LIBS)
+message("XXXX adding BOOST_LOG_DYN_LINK")
   add_config_define(BOOST_LOG_DYN_LINK)
 endif()
 
