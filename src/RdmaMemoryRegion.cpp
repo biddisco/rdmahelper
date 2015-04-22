@@ -80,8 +80,10 @@ RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
     const void *buffer, const uint64_t length)
 {
   _messageLength = length;
-  _frags = -1; // frags = -1 is a special flag we use to tell destructor not to deallocate the memory on close
-  _fd = -1;
+  _flags  =  BLOCK_USER;
+  _frags  = -1;
+  _fd     = -1;
+
   int accessFlags = _IBV_ACCESS_LOCAL_WRITE | _IBV_ACCESS_REMOTE_WRITE
       | _IBV_ACCESS_REMOTE_READ;
 
@@ -90,7 +92,7 @@ RdmaMemoryRegion::RdmaMemoryRegion(RdmaProtectionDomainPtr pd,
   if (_region == NULL) {
     int err = errno;
     LOG_ERROR_MSG(
-        "error registering ibv_reg_mr error/message: " << err << "/"
+        "error registering user mem ibv_reg_mr " << hexpointer(buffer) << " " << hexlength(length) << " error/message: " << err << "/"
             << RdmaError::errorString(err));
   } else {
     LOG_DEBUG_MSG(
@@ -332,8 +334,7 @@ int RdmaMemoryRegion::release(void) {
     else {
       LOG_DEBUG_MSG("released memory region with local key " << getLocalKey() << " at address " << buffer << " with length " << hexlength(length));
     }
-    // _frags == -1 is special to tell us not to release the memory, just unregister it
-    if (_frags != -1) {
+    if (!isUserRegion()) {
 #ifdef RDMA_USE_MMAP
       ::munmap(buffer, length);
 #else

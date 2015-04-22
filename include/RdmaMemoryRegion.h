@@ -78,16 +78,18 @@ public:
    {
       _region        = NULL;
       _messageLength = 0;
+      _flags         = 0;
       _frags         = 0;
-      _fd            = -1;
+      _fd            =-1;
    }
 
     RdmaMemoryRegion(struct ibv_mr *region, uint32_t messageLength)
     {
        _region        = region;
        _messageLength = messageLength;
+       _flags         = 0;
        _frags         = 0;
-       _fd            = -1;
+       _fd            =-1;
     }
 
     // create a memory region object by registering an existing address buffer
@@ -181,6 +183,16 @@ public:
 
    std::ostream& writeTo(std::ostream& os) const;
 
+   enum {
+       BLOCK_USER = 1,
+       BLOCK_TEMP = 2,
+   };
+
+   //! Check is this region was constructed from user allocated memory
+   bool isUserRegion() { return (_flags & BLOCK_USER) == BLOCK_USER; }
+   bool isTempRegion() { return (_flags & BLOCK_TEMP) == BLOCK_TEMP; }
+   void setTempRegion() { _flags |= BLOCK_TEMP; }
+
 private:
 
    //! Memory region.
@@ -191,6 +203,9 @@ private:
 
    //! File descriptor if using with mmap
    int _fd;
+
+   //! flags to control lifetime of blocks
+   int _flags;
 
    //! Length of a message in the memory region.
    uint32_t _messageLength;

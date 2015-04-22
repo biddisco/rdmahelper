@@ -34,6 +34,7 @@
 #include <queue>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <iostream>
 //
 #include <boost/noncopyable.hpp>
@@ -117,6 +118,7 @@ struct RdmaMemoryPool : boost::noncopyable
    int   DeallocateListBase();
 
    RdmaMemoryRegion *AllocateRegisteredBlock(int length);
+   RdmaMemoryRegion *AllocateTemporaryBlock(int length);
 
    RdmaMemoryRegion *allocateRegion(size_t size=0);
    char             *allocate(size_t size=0);
@@ -158,7 +160,7 @@ struct RdmaMemoryPool : boost::noncopyable
 
   // used to map the internal memory address to the region that
   // holds the registration information
-  std::map<const void *, RdmaMemoryRegion*>              pointer_map_;
+  std::unordered_map<const void *, RdmaMemoryRegion*> pointer_map_;
 
   mutex_type     memBuffer_mutex;
   condition_type memBuffer_cond;

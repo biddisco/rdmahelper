@@ -120,6 +120,22 @@ RdmaMemoryRegion* RdmaMemoryPool::AllocateRegisteredBlock(int length)
 }
 
 //----------------------------------------------------------------------------
+RdmaMemoryRegion* RdmaMemoryPool::AllocateTemporaryBlock(int length)
+{
+  LOG_DEBUG_MSG("AllocateTemporaryBlock with this pointer " << hexpointer(this) << " size " << hexlength(length));
+  RdmaMemoryRegion *region = new RdmaMemoryRegion();
+  region->setTempRegion();
+#ifndef __BGQ__
+  region->allocate(protection_domain_, length);
+#else
+  region->allocate(rdma_fd_, length);
+#endif
+  LOG_TRACE_MSG("Allocating registered block " << hexpointer(region->getAddress()) << hexlength(length));
+
+  return region;
+}
+
+//----------------------------------------------------------------------------
 int RdmaMemoryPool::AllocateList(std::size_t chunks)
 {
   std::size_t num_chunks = chunks==0 ? max_chunks_ : chunks;
