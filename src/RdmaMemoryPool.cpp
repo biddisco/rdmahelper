@@ -25,11 +25,13 @@ RdmaMemoryPool::~RdmaMemoryPool()
 //----------------------------------------------------------------------------
 char *RdmaMemoryPool::allocate(size_t length)
 {
-  if (length>chunk_size_) {
-    throw pinned_memory_exception(std::string(std::string("Chunk pool size exceeded ") + std::to_string(length)).c_str());
-  }
-  RdmaMemoryRegion *region = allocateRegion(length);
-  return static_cast<char*>(region->getAddress());
+    if (length>chunk_size_) {
+        LOG_ERROR_MSG("Chunk pool size exceeded " << length);
+        std::terminate();
+        throw pinned_memory_exception(std::string(std::string("Chunk pool size exceeded ") + std::to_string(length)).c_str());
+    }
+    RdmaMemoryRegion *region = allocateRegion(length);
+    return static_cast<char*>(region->getAddress());
 }
 
 //----------------------------------------------------------------------------
@@ -53,7 +55,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
   this->region_ref_count_++;
 
   // get a block
-  RdmaMemoryRegion *buffer = free_list_.front();
+  RdmaMemoryRegion *buffer = free_list_.top();
   free_list_.pop();
 
   LOG_TRACE_MSG("Popping Block"

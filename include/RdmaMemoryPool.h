@@ -156,7 +156,7 @@ struct RdmaMemoryPool : boost::noncopyable
   std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
 
   // blocks that have not been allocated are available from here
-  std::queue<RdmaMemoryRegion*>                    free_list_;
+  std::stack<RdmaMemoryRegion*>                    free_list_;
 
   // used to map the internal memory address to the region that
   // holds the registration information
