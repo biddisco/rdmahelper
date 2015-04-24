@@ -63,6 +63,7 @@
 
 #  define CIOSLOGMSG_WC(x,y)
 #  define CIOSLOGRDMA_REQ(x,y,z,a)
+#  define initRdmaHelperLogging()
 
 #else
 //
@@ -93,7 +94,7 @@
   namespace attrs = boost::log::attributes;
   namespace keywords = boost::log::keywords;
 
-  void initLogging();
+  void initRdmaHelperLogging();
 
 // need to put this one back ...
 #  define LOG_DECLARE_FILE(f)
