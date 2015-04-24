@@ -152,6 +152,17 @@ private:
 
    RdmaMemoryPoolPtr _memoryPool;
 
+#ifdef RDMAHELPER_HPX_COMPATIBILITY
+  typedef hpx::lcos::local::spinlock              mutex_type;
+  typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
+  typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;
+#else
+  typedef std::mutex                    mutex_type;
+  typedef std::lock_guard<std::mutex>   lock_type1;
+  typedef std::unique_lock<std::mutex>  lock_type2;
+#endif
+
+  mutex_type completion_mutex;
    //! \brief  Transfer data to the client from the large memory region.
    //! \param  address Address of remote memory region.
    //! \param  rkey Key of remote memory region.
