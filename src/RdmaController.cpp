@@ -439,17 +439,14 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
         // Remove work completions from the completion queue until it is empty.
         while (completionQ->removeCompletions() != 0) {
             // Get the next work completion.
-            struct ibv_wc *completion;
             // the completion queue isn't yet thread safe, so only allow one thread at a time to pop a completion
-            {
-                //lock_type1 lock(completion_mutex);
-                completion = completionQ->popCompletion();
-                LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion->wr_id));
-                // Find the connection that received the message.
-                client = _clients[completion->qp_num];
-            }
+            struct ibv_wc completion = completionQ->popCompletion();
+            LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion.wr_id));
+            // Find the connection that received the message.
+            client = _clients[completion.qp_num];
+            //
             if (this->_completionFunction) {
-                this->_completionFunction(completion, client);
+                this->_completionFunction(std::move(completion), client);
             }
         }
     }

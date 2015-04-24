@@ -103,7 +103,7 @@ public:
 
    unsigned int getPort() { return _port; }
 
-   typedef std::function<int(struct ibv_wc *completion, RdmaClientPtr client)> CompletionFunction;
+   typedef std::function<int(struct ibv_wc completion, RdmaClientPtr client)> CompletionFunction;
    void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
 
    void freeRegion(RdmaMemoryRegion *region);

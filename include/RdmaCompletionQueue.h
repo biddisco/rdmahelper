@@ -46,6 +46,19 @@
 #include <memory>
 #include <mutex>
 
+#ifdef RDMAHELPER_HPX_COMPATIBILITY
+# include <hpx/config.hpp>
+# include <hpx/hpx_fwd.hpp>
+#endif
+
+#include <boost/lockfree/queue.hpp>
+
+typedef boost::lockfree::queue<struct ibv_wc> queue_type;
+//#else
+//# include <hpx/util/lockfree/queue.hpp>
+//  typedef hpx::util::lockfree::queue<struct ibv_wc> deque_type;
+//#endif
+
 namespace bgcios
 {
 
@@ -100,7 +113,7 @@ public:
    //!         Returns NULL when no completion queue entries are available.
    //! \return Pointer to completion queue entry.
 
-   struct ibv_wc *popCompletion(void);
+   struct ibv_wc popCompletion(void);
 
    //! \brief  Return a string naming a ibv_wc_opcode value.
    //! \param  opcode ibv_wc_opcode value.
@@ -128,14 +141,15 @@ private:
    //! Completion queue.
    struct ibv_cq *_completionQ;
 
-   //! Array of work completions.
-   struct ibv_wc _completions[MaxQueueSize];
+   //! Work completions.
+//   struct ibv_wc _completions[MaxQueueSize];
+   queue_type _completions;
 
    //! Number of valid work completions in _completions array.
-   int _numCompletions;
+   //int _numCompletions;
 
    //! Index of next work completion to pop from _completions array.
-   int _nextCompletion;
+   //int _nextCompletion;
 
    //! Total number of work completions received by completion queue.
    int _totalCompletions;

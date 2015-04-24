@@ -55,8 +55,8 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
    // Initialize private data.
    _context = context;
    _completionQ = NULL;
-   _numCompletions = 0;
-   _nextCompletion = 0;
+//   _numCompletions = 0;
+//   _nextCompletion = 0;
    _totalCompletions = 0;
    _totalEvents = 0;
    _tag = "[CQ ?] ";
@@ -135,29 +135,41 @@ RdmaCompletionQueue::ackEvents(unsigned int numEvents)
 // Remove the work completions from the completion queue.
 int RdmaCompletionQueue::removeCompletions(int numEntries)
 {
-    std::lock_guard<std::mutex> lock(completion_mutex);
-    //
-    int nc = ibv_poll_cq(_completionQ, numEntries, &(_completions[_numCompletions]));
+    struct ibv_wc completions[MaxQueueSize];
+    int nc = ibv_poll_cq(_completionQ, numEntries, completions);
     if (nc < 0) {
         RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
         LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
         throw e;
     }
-    for (int i=0; i<nc; i++){
-        CIOSLOGMSG_WC(BGV_WORK_CMP, _completions+i);
+    for (int i=0; i<nc; ++i) {
+        CIOSLOGMSG_WC(BGV_WORK_CMP, completions+i);
+        _completions.push(completions[i]);
     }
-    _numCompletions += nc;
-    if (nc>0) {
-        LOG_CIOS_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
-    }
-    _totalCompletions += _numCompletions;
-
+//    _numCompletions += nc;
+//    if (nc>0) {
+//        LOG_CIOS_TRACE_MSG(_tag << /*_numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
+//    }
+//    _totalCompletions += nc;
     return nc;
 }
 
-struct ibv_wc *
+struct ibv_wc
 RdmaCompletionQueue::popCompletion(void)
 {
+    struct ibv_wc completion;
+    _completions.pop(completion);
+    if (completion.status != IBV_WC_SUCCESS) {
+        LOG_ERROR_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion.status)
+                << "' for operation " << wc_opcode_str(completion.opcode) <<  " (" << completion.opcode << ")");
+    }
+    else {
+        LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion.status)
+                << "' for operation " << wc_opcode_str(completion.opcode) <<  " (" << completion.opcode << ")");
+    }
+    return completion;
+}
+/*
     std::lock_guard<std::mutex> lock(completion_mutex);
     //
     if (_numCompletions == 0) {
@@ -189,6 +201,7 @@ RdmaCompletionQueue::popCompletion(void)
 
     return completion;
 }
+*/
 
 std::string const RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode)
 {
@@ -211,7 +224,7 @@ std::ostream&
 RdmaCompletionQueue::writeTo(std::ostream& os) const
 {
    os << _tag;
-   os << " numCompletions=" << _numCompletions << " nextCompletion=" << _nextCompletion << " totalCompletions=" << _totalCompletions;
+//   os << " numCompletions=" << _numCompletions << " nextCompletion=" << _nextCompletion << " totalCompletions=" << _totalCompletions;
    os << " totalEvents=" << _totalEvents;
    return os; 
 }
