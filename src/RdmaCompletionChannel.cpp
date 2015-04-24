@@ -158,8 +158,7 @@ RdmaCompletionChannel::waitForEvent(void)
    return;
 }
 
-RdmaCompletionQueuePtr
-RdmaCompletionChannel::getEvent(void)
+RdmaCompletionQueue *RdmaCompletionChannel::getEvent(void)
 {
    // Get the notification event from the completion channel.
    LOG_CIOS_TRACE_MSG("getting notification event on completion channel using fd " << hexnumber(_completionChannel->fd) << " ...");
@@ -169,8 +168,7 @@ RdmaCompletionChannel::getEvent(void)
       int err = errno;
       if (err == EAGAIN) {
          LOG_CIOS_TRACE_MSG("no notification events available from completion channel using fd " << hexnumber(_completionChannel->fd));
-         RdmaCompletionQueuePtr nullQ;
-         return nullQ;
+         return NULL;
       }
       RdmaError e(err, "ibv_get_cq_event() failed");
       LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << RdmaError::errorString(e.errcode()));
@@ -178,20 +176,22 @@ RdmaCompletionChannel::getEvent(void)
    }
 
    // Find the completion queue that has completions available.
-   RdmaCompletionQueuePtr completionQ = _queues[eventQ->handle];
+   RdmaCompletionQueue *completionQ = _queues[eventQ->handle].get();
    if (completionQ == NULL) {
-//    ibv_ack_cq_event(eventQ, 1);
+      // ibv_ack_cq_event(eventQ, 1);
       RdmaError e(ESRCH, "completion queue not found");
       LOG_ERROR_MSG("could not find completion queue " << eventQ->handle << " in list after successful ibv_get_cq_event");
       throw e;
    }
 
    // Acknowledge the notification event and "re-arm" the completion queue for the next event.
-   ++_numEvents;
-   if (_numEvents == _ackEventLimit) {
+   completionQ->ackEvents(1);
+   /*
+   if (++_numEvents == _ackEventLimit) {
       completionQ->ackEvents(_numEvents);
       _numEvents = 0;
    }
+   */
    completionQ->requestEvent();
    LOG_CIOS_TRACE_MSG("got notification event for completion queue " << eventQ->handle);
 

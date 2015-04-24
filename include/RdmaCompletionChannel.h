@@ -45,6 +45,7 @@
 #include <infiniband/verbs.h>
 #include <memory>
 #include <map>
+#include <unordered_map>
 
 namespace bgcios
 {
@@ -111,7 +112,7 @@ public:
    //! \return Pointer to completion queue that has a completion available.
    //! \throws RdmaError.
 
-   RdmaCompletionQueuePtr getEvent(void);
+   RdmaCompletionQueue *getEvent(void);
 
    //! \brief  Write info about the completion channel to the specified stream.
    //! \param  os Output stream to write to.
@@ -134,7 +135,7 @@ private:
    unsigned int _ackEventLimit;
 
    //! Map of completion queues using the completion channel indexed by completion queue handle.
-   std::map<uint32_t, RdmaCompletionQueuePtr> _queues;
+   std::unordered_map<uint32_t, RdmaCompletionQueuePtr> _queues;
 
 };
 
