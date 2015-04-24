@@ -110,15 +110,15 @@ RdmaCompletionQueue::~RdmaCompletionQueue()
 void
 RdmaCompletionQueue::requestEvent(void)
 {
-   int err = ibv_req_notify_cq(_completionQ, 0);
-   if (err != 0) {
-      RdmaError e(err, "ibv_req_notify_cq() failed");
-      LOG_ERROR_MSG(_tag << "error requesting notification for completion queue: " << RdmaError::errorString(e.errcode()));
-      throw e;
-   }
+    int err = ibv_req_notify_cq(_completionQ, 0);
+    if (err != 0) {
+        RdmaError e(err, "ibv_req_notify_cq() failed");
+        LOG_ERROR_MSG(_tag << "error requesting notification for completion queue: " << RdmaError::errorString(e.errcode()));
+        throw e;
+    }
 
-   LOG_CIOS_TRACE_MSG(_tag << "requested notification for completion queue");
-   return;
+    LOG_CIOS_TRACE_MSG(_tag << "requested notification for completion queue");
+    return;
 }
 
 void
@@ -169,39 +169,6 @@ RdmaCompletionQueue::popCompletion(void)
     }
     return completion;
 }
-/*
-    std::lock_guard<std::mutex> lock(completion_mutex);
-    //
-    if (_numCompletions == 0) {
-        LOG_CIOS_TRACE_MSG(_tag << "no work completions are available");
-        return NULL;
-    }
-
-    // Get the next work completion from the list.
-    struct ibv_wc *completion = &(_completions[_nextCompletion]);
-    if (completion->status != IBV_WC_SUCCESS) {
-        LOG_ERROR_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
-                << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
-    }
-    else {
-        LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
-                << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
-    }
-
-    // Increment next work completion index.
-    _nextCompletion++;
-
-    // All of the work completions have been popped.
-    if (_nextCompletion == _numCompletions) {
-        LOG_CIOS_TRACE_MSG(_tag << "done, all " << _numCompletions << " work completions are popped");
-        _numCompletions = 0;
-        _nextCompletion = 0;
-    }
-    LOG_CIOS_TRACE_MSG(_tag << "after pop, next completion is " << _nextCompletion << ", num completions is " << _numCompletions);
-
-    return completion;
-}
-*/
 
 std::string const RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode)
 {

@@ -117,7 +117,9 @@ public:
 
 private:
 
-   void eventChannelHandler(void);
+    int eventMonitor_cm(int);
+
+    void eventChannelHandler(void);
 
    //! \brief  Handle events from completion channel.
    //! \return Nothing.
@@ -154,15 +156,19 @@ private:
 
 #ifdef RDMAHELPER_HPX_COMPATIBILITY
   typedef hpx::lcos::local::spinlock              mutex_type;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;
+  typedef hpx::lcos::local::spinlock::scoped_lock scoped_lock_type;
+  typedef boost::unique_lock<mutex_type>          unique_lock_type;
 #else
   typedef std::mutex                    mutex_type;
   typedef std::lock_guard<std::mutex>   lock_type1;
-  typedef std::unique_lock<std::mutex>  lock_type2;
+  typedef std::unique_lock<std::mutex>  unique_lock;
 #endif
 
-  mutex_type completion_mutex;
+
+  mutex_type        event_mutex;
+  mutex_type        connection_event_mutex;
+  unique_lock_type  event_lock;
+
    //! \brief  Transfer data to the client from the large memory region.
    //! \param  address Address of remote memory region.
    //! \param  rkey Key of remote memory region.

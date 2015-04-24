@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <thread>
 #include <fstream>
+#include <chrono>
 
 // network stuff, only need inet_ntoa
 #include <sys/socket.h>
@@ -214,20 +215,21 @@ void RdmaController::refill_client_receives() {
 
 /*---------------------------------------------------------------------------*/
 int RdmaController::eventMonitor(int Nevents) {
-  const int eventChannel = 0;
-  const int compChannel = 1;
-  const int numFds = 2;
+  //const int eventChannel = 0;
+  const int compChannel = 0;
+  const int numFds = 1;
   //
   bool _done = false;
   int events_handled = 0;
+  static std::chrono::system_clock::time_point last;
 
   pollfd pollInfo[numFds];
   int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
-
+/*
   pollInfo[eventChannel].fd = _rdmaListener->getEventChannelFd();
   pollInfo[eventChannel].events = POLLIN;
   pollInfo[eventChannel].revents = 0;
-
+*/
   pollInfo[compChannel].fd = _completionChannel->getChannelFd();
   pollInfo[compChannel].events = POLLIN;
   pollInfo[compChannel].revents = 0;
@@ -267,8 +269,73 @@ int RdmaController::eventMonitor(int Nevents) {
       Nevents--;
       events_handled++;
     }
+
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+//    if (std::chrono::duration_cast<std::chrono::microseconds>(now - last).count()>80)
+    {
+        scoped_lock_type lock(connection_event_mutex);
+        eventMonitor_cm(0);
+    }
+/*
     // Check for an event on the event channel.
     else if (pollInfo[eventChannel].revents & POLLIN) {
+      LOG_CIOS_TRACE_MSG("input event available on event channel");
+      eventChannelHandler();
+      pollInfo[eventChannel].revents = 0;
+      Nevents--;
+      events_handled++;
+    }
+*/
+    if (Nevents <= 0) {
+      _done = true;
+    }
+  }
+  return events_handled;
+}
+
+int RdmaController::eventMonitor_cm(int Nevents) {
+  const int eventChannel = 0;
+  const int numFds = 1;
+  //
+  bool _done = false;
+  int events_handled = 0;
+
+  pollfd pollInfo[numFds];
+  int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
+
+  pollInfo[eventChannel].fd = _rdmaListener->getEventChannelFd();
+  pollInfo[eventChannel].events = POLLIN;
+  pollInfo[eventChannel].revents = 0;
+
+  // Process events until told to stop - or timeout.
+  while (!_done) {
+
+    // Wait for an event on one of the descriptors.
+    int rc = poll(pollInfo, numFds, polltimeout);
+
+    // If there were no events/messages
+    if (rc == 0) {
+      // if we were told to wait for at least one event, retry
+      if (Nevents > 0)
+        continue;
+      // otherwise, leave
+      else
+        break;
+    }
+
+    // There was an error so log the failure and try again.
+    if (rc == -1) {
+      int err = errno;
+      if (err == EINTR) {
+        LOG_CIOS_TRACE_MSG("poll returned EINTR, continuing ...");
+        continue;
+      }
+      LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
+      return events_handled;
+    }
+
+    // Check for an event on the event channel.
+    if (pollInfo[eventChannel].revents & POLLIN) {
       LOG_CIOS_TRACE_MSG("input event available on event channel");
       eventChannelHandler();
       pollInfo[eventChannel].revents = 0;
@@ -365,27 +432,6 @@ void RdmaController::eventChannelHandler(void) {
     uint32_t qp = _rdmaListener->getEventQpNum();
     RdmaClientPtr client = _clients[qp];
     RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
-    /*
-     while (client->getNumReceives()>0 ) {
-     //           LOG_ERROR_MSG("@@@ ERROR there are uncompleted events NumWaitingRecv " << client->getNumWaitingRecv() << " NumWaitingSend " << client->getNumWaitingSend());
-     //           this->eventMonitor(1,false);
-     //           LOG_ERROR_MSG("$$$ ERROR there are uncompleted events NumWaitingRecv " << client->getNumWaitingRecv() << " NumWaitingSend " << client->getNumWaitingSend());
-     while (completionQ->removeCompletions() != 0) {
-     LOG_ERROR_MSG("Removed a completion from the queue ");
-     // Get the next work completion.
-     struct ibv_wc *completion = completionQ->popCompletion();
-     LOG_DEBUG_MSG("Removing wr_id " << std::setfill('0') << std::setw(12) << std::hex << completion->wr_id);
-     // Find the connection that received the message.
-     //              client = _clients.get(completion->qp_num);
-     }
-     //              if (this->_completionFunction) {
-     //                this->_completionFunction(completion, client);
-     //              }
-     }
-
-     // we must not disconnect if there are outstanding work requests
-     LOG_ERROR_MSG("@@@ CLEAR uncompleted events handled before disconnection");
-     */
 
     // Complete disconnect initiated by peer.
     err = client->disconnect(false);
@@ -436,17 +482,21 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
         // Get the notification event from the completion channel.
         RdmaCompletionQueue *completionQ = _completionChannel->getEvent();
 
-        // Remove work completions from the completion queue until it is empty.
-        while (completionQ->removeCompletions() != 0) {
-            // Get the next work completion.
-            // the completion queue isn't yet thread safe, so only allow one thread at a time to pop a completion
-            struct ibv_wc completion = completionQ->popCompletion();
-            LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion.wr_id));
-            // Find the connection that received the message.
-            client = _clients[completion.qp_num];
-            //
-            if (this->_completionFunction) {
-                this->_completionFunction(std::move(completion), client);
+        // Remove one completion, make sure only one thread enters at a time
+        {
+            boost::unique_lock<hpx::lcos::local::spinlock> lock(event_mutex);
+            if (completionQ->removeCompletions() != 0) {
+                // Get the next work completion.
+                // the completion queue isn't yet thread safe, so only allow one thread at a time to pop a completion
+                struct ibv_wc completion = completionQ->popCompletion();
+                LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion.wr_id));
+                // Find the connection that received the message.
+                client = _clients[completion.qp_num];
+                //
+                lock.unlock();
+                if (this->_completionFunction) {
+                    this->_completionFunction(std::move(completion), client);
+                }
             }
         }
     }

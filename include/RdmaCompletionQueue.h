@@ -49,6 +49,12 @@
 #ifdef RDMAHELPER_HPX_COMPATIBILITY
 # include <hpx/config.hpp>
 # include <hpx/hpx_fwd.hpp>
+# include <hpx/util/spinlock.hpp>
+# include <boost/thread/locks.hpp>
+  typedef hpx::lcos::local::spinlock              mutex_type;
+//  typedef hpx::lcos::local::spinlock::scoped_lock lock_type;
+  typedef boost::unique_lock<mutex_type>          lock_type;
+
 #endif
 
 #include <boost/lockfree/queue.hpp>
@@ -160,8 +166,8 @@ private:
    //! Tag to identify completion queue in trace points.
    std::string _tag;
 
-   std::mutex completion_mutex;
-
+//   std::mutex event_mutex;
+   lock_type  event_lock;
 };
 
 
