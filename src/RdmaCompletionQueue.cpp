@@ -132,54 +132,62 @@ RdmaCompletionQueue::ackEvents(unsigned int numEvents)
    return;
 }
 
-int
-RdmaCompletionQueue::removeCompletions(int numEntries)
+// Remove the work completions from the completion queue.
+int RdmaCompletionQueue::removeCompletions(int numEntries)
 {
-   // Remove the work completions from the completion queue.
-   int nc = ibv_poll_cq(_completionQ, numEntries, &(_completions[_numCompletions]));
-   if (nc < 0) {
-      RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
-      LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
-      throw e;
-   }
-   for (int i=0;i<nc;i++){
-     CIOSLOGMSG_WC(BGV_WORK_CMP,_completions+i);
-   }
-   _numCompletions += nc;
-   if (nc>0) {
-     LOG_CIOS_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
-   }
-   _totalCompletions += _numCompletions;
+    std::lock_guard<std::mutex> lock(completion_mutex);
+    //
+    int nc = ibv_poll_cq(_completionQ, numEntries, &(_completions[_numCompletions]));
+    if (nc < 0) {
+        RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
+        LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
+        throw e;
+    }
+    for (int i=0; i<nc; i++){
+        CIOSLOGMSG_WC(BGV_WORK_CMP, _completions+i);
+    }
+    _numCompletions += nc;
+    if (nc>0) {
+        LOG_CIOS_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
+    }
+    _totalCompletions += _numCompletions;
 
-   return nc;
+    return nc;
 }
 
 struct ibv_wc *
 RdmaCompletionQueue::popCompletion(void)
 {
-   // There are no work completions available.
-   if (_numCompletions == 0) {
-      LOG_CIOS_TRACE_MSG(_tag << "no work completions are available");
-      return NULL;
-   }
+    std::lock_guard<std::mutex> lock(completion_mutex);
+    //
+    if (_numCompletions == 0) {
+        LOG_CIOS_TRACE_MSG(_tag << "no work completions are available");
+        return NULL;
+    }
 
-   // Get the next work completion from the list.
-   struct ibv_wc *completion = &(_completions[_nextCompletion]);
-   LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
-       << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+    // Get the next work completion from the list.
+    struct ibv_wc *completion = &(_completions[_nextCompletion]);
+    if (completion->status != IBV_WC_SUCCESS) {
+        LOG_ERROR_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+                << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+    }
+    else {
+        LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+                << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+    }
 
-   // Increment next work completion index.
-   _nextCompletion++;
+    // Increment next work completion index.
+    _nextCompletion++;
 
-   // All of the work completions have been popped.
-   if (_nextCompletion == _numCompletions) {
-      LOG_CIOS_TRACE_MSG(_tag << "done, all " << _numCompletions << " work completions are popped");
-      _numCompletions = 0;
-      _nextCompletion = 0;
-   }
-   LOG_CIOS_TRACE_MSG(_tag << "after pop, next completion is " << _nextCompletion << ", num completions is " << _numCompletions);
+    // All of the work completions have been popped.
+    if (_nextCompletion == _numCompletions) {
+        LOG_CIOS_TRACE_MSG(_tag << "done, all " << _numCompletions << " work completions are popped");
+        _numCompletions = 0;
+        _nextCompletion = 0;
+    }
+    LOG_CIOS_TRACE_MSG(_tag << "after pop, next completion is " << _nextCompletion << ", num completions is " << _numCompletions);
 
-   return completion;
+    return completion;
 }
 
 std::string const RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode)

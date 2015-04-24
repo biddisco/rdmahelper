@@ -44,6 +44,7 @@
 #include <infiniband/verbs.h>
 #include <string>
 #include <memory>
+#include <mutex>
 
 namespace bgcios
 {
@@ -144,6 +145,8 @@ private:
 
    //! Tag to identify completion queue in trace points.
    std::string _tag;
+
+   std::mutex completion_mutex;
 
 };
 
