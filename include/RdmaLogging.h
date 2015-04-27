@@ -71,7 +71,6 @@
 //
 #  ifdef RDMAHELPER_HPX_COMPATIBILITY
 #    include <hpx/config.hpp>
-#    include <hpx/runtime/threads/thread.hpp>
 #  endif
 
 //#include <boost/format.hpp>
@@ -100,20 +99,20 @@
 // need to put this one back ...
 #  define LOG_DECLARE_FILE(f)
 
-#  define LOG_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << hpx::this_thread::get_id() << " " << x;
-#  define LOG_WARN_MSG(x)  BOOST_LOG_TRIVIAL(warning) << hpx::this_thread::get_id() << " " << x;
-#  define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << hpx::this_thread::get_id() << " " << x;
+#  define LOG_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << x;
+#  define LOG_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << x;
+#  define LOG_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << x;
+#  define LOG_WARN_MSG(x)  BOOST_LOG_TRIVIAL(warning) << x;
+#  define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << x;
+#  define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << x;
 
 #  define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__ << " ****************");
 #  define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__ << " ################");
 
 
-#  define LOG_CIOS_DEBUG_MSG(x) LOG_DEBUG_MSG(x)
-#  define LOG_CIOS_INFO_MSG(x)  LOG_INFO_MSG(x)
-#  define LOG_CIOS_TRACE_MSG(x) LOG_TRACE_MSG(x)
+#  define LOG_CIOS_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << x;
+#  define LOG_CIOS_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << x;
+#  define LOG_CIOS_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << x;
 
 #  define X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE(r, data, elem)    \
     case elem : return BOOST_PP_STRINGIZE(elem);
