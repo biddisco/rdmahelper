@@ -430,8 +430,8 @@ void RdmaController::eventChannelHandler(void) {
 }
 
 /*---------------------------------------------------------------------------*/
-bool RdmaController::completionChannelHandler(uint64_t requestId) {
-    RdmaClientPtr client;
+bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_type2 &&lock) {
+    RdmaClient *client;
     try {
         // Get the notification event from the completion channel.
         RdmaCompletionQueue *completionQ = _completionChannel->getEvent();
@@ -446,7 +446,7 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) {
                 completion = completionQ->popCompletion();
                 LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion->wr_id));
                 // Find the connection that received the message.
-                client = _clients[completion->qp_num];
+                client = _clients[completion->qp_num].get();
             }
             if (this->_completionFunction) {
                 this->_completionFunction(completion, client);
