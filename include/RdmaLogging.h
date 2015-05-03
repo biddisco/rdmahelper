@@ -42,7 +42,7 @@
 //
 // Logging disabled, #define all macros to be empty
 //
-#ifdef RDMAHELPER_DISABLE_LOGGING
+#ifndef RDMAHELPER_HAVE_LOGGING
 #  include <sstream>
 
 #  define LOG_DECLARE_FILE(x)

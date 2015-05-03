@@ -12,7 +12,7 @@
 //
 #include "RdmaLogging.h"
 
-#ifndef RDMAHELPER_DISABLE_LOGGING
+#ifdef RDMAHELPER_HAVE_LOGGING
 
 //#include <boost/format.hpp>
     #include <boost/log/trivial.hpp>
