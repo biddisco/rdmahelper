@@ -127,14 +127,16 @@ set(RDMAHELPER_includes
   ${RDMA_CM_INCLUDE_DIRS}
   ${BGSYS_includes}
 )
-   
+
+if(NOT BUILD_SHARED_LIBS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")   
+endif()   
  
 add_library(rdmahelper
   ${RDMAHELPER_UTILITY_SRC}
   ${RDMAHELPER_SRC} 
 )
 
-message("Boost libraries are ${Boost_LIBRARIES}")
 target_link_libraries(rdmahelper
   ${IB_VERBS_LIBRARIES}
   ${RDMA_CM_LIBRARIES}
