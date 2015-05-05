@@ -120,7 +120,7 @@ public:
    postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
    {
      uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, length, expected);
-     this->pushReceive_(wr_id);
+     this->pushReceive();
      return wr_id;
    }
 
