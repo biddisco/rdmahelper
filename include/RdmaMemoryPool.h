@@ -31,6 +31,7 @@
 #endif
 //
 #include <atomic>
+#include <stack>
 #include <queue>
 #include <vector>
 #include <map>

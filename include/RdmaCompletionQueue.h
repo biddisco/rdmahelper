@@ -120,6 +120,8 @@ public:
    //! Number of entries in completion queue handling a single compute node.
    static const int SingleNodeQueueSize = 8;
 
+   int poll_completion(struct ibv_wc *completion);
+
 private:
 
    //! Context for IB device.

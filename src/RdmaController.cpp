@@ -213,73 +213,76 @@ void RdmaController::refill_client_receives() {
 }
 
 /*---------------------------------------------------------------------------*/
-int RdmaController::eventMonitor(int Nevents) {
-  const int eventChannel = 0;
-  const int compChannel = 1;
-  const int numFds = 2;
-  //
-  bool _done = false;
-  int events_handled = 0;
+int RdmaController::pollCompletionQueues()
+{
+//    LOG_DEBUG_MSG("pollCompletionQueues");
+    //
+    int ntot = 0, nc = 0;
+    //
+    for (auto _client : _clients) {
+        // avoid using smartpointers to save atomic ops
+        RdmaClient *client = _client.second.get();
+        RdmaCompletionQueue *completionQ = client->getCompletionQ().get();
 
-  pollfd pollInfo[numFds];
-  int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
+        // Remove work completions from the completion queue until it is empty.
+        do {
+            struct ibv_wc completion;
+            nc = completionQ->poll_completion(&completion);
+            if (nc>0) {
+                LOG_DEBUG_MSG("pollCompletionQueues - removing wr_id " << hexpointer(completion.wr_id) << " "
+                        << RdmaCompletionQueue::wc_opcode_str(completion.opcode));
+                if (this->_completionFunction) {
+                    this->_completionFunction(completion, client);
+                }
+            }
+            ntot += nc;
+        } while (nc>0);
+    }
+    return ntot;
+}
+/*---------------------------------------------------------------------------*/
+int RdmaController::pollEventChannel() {
+    const int eventChannel = 0;
+    const int numFds = 1;
+    //
+    pollfd pollInfo[numFds];
+    int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
 
-  pollInfo[eventChannel].fd = _rdmaListener->getEventChannelFd();
-  pollInfo[eventChannel].events = POLLIN;
-  pollInfo[eventChannel].revents = 0;
-
-  pollInfo[compChannel].fd = _completionChannel->getChannelFd();
-  pollInfo[compChannel].events = POLLIN;
-  pollInfo[compChannel].revents = 0;
-
-  // Process events until told to stop - or timeout.
-  while (!_done) {
+    pollInfo[eventChannel].fd = _rdmaListener->getEventChannelFd();
+    pollInfo[eventChannel].events = POLLIN;
+    pollInfo[eventChannel].revents = 0;
 
     // Wait for an event on one of the descriptors.
     int rc = poll(pollInfo, numFds, polltimeout);
 
     // If there were no events/messages
     if (rc == 0) {
-      // if we were told to wait for at least one event, retry
-      if (Nevents > 0)
-        continue;
-      // otherwise, leave
-      else
-        break;
+        return 0;
     }
 
     // There was an error so log the failure and try again.
     if (rc == -1) {
-      int err = errno;
-      if (err == EINTR) {
-        LOG_CIOS_TRACE_MSG("poll returned EINTR, continuing ...");
-        continue;
-      }
-      LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
-      return events_handled;
+        int err = errno;
+        if (err == EINTR) {
+            LOG_CIOS_TRACE_MSG("poll returned EINTR, continuing ...");
+            return 0;
+        }
+        LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
+        return 0;
     }
 
-    // Check for an event on the completion channel.
-    if (pollInfo[compChannel].revents & POLLIN) {
-      LOG_CIOS_TRACE_MSG("input event available on data channel");
-      completionChannelHandler(0);
-      pollInfo[compChannel].revents = 0;
-      Nevents--;
-      events_handled++;
+    if (pollInfo[eventChannel].revents & POLLIN) {
+        LOG_CIOS_TRACE_MSG("input event available on event channel");
+        eventChannelHandler();
     }
-    // Check for an event on the event channel.
-    else if (pollInfo[eventChannel].revents & POLLIN) {
-      LOG_CIOS_TRACE_MSG("input event available on event channel");
-      eventChannelHandler();
-      pollInfo[eventChannel].revents = 0;
-      Nevents--;
-      events_handled++;
-    }
-
-    if (Nevents <= 0) {
-      _done = true;
-    }
-  }
+    return 1;
+}
+/*---------------------------------------------------------------------------*/
+int RdmaController::eventMonitor(int Nevents)
+{
+  int events_handled = 0;
+  events_handled += pollCompletionQueues();
+  events_handled += pollEventChannel();
   return events_handled;
 }
 
@@ -304,8 +307,10 @@ void RdmaController::eventChannelHandler(void) {
     // Construct a RdmaCompletionQueue object for the new client.
     RdmaCompletionQueuePtr completionQ;
     try {
+//      completionQ = std::make_shared < RdmaCompletionQueue
+//          > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
       completionQ = std::make_shared < RdmaCompletionQueue
-          > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
+          > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
     } catch (bgcios::RdmaError& e) {
       LOG_ERROR_MSG("error creating completion queue: " << e.what());
       return;
@@ -327,7 +332,7 @@ void RdmaController::eventChannelHandler(void) {
     _clients[client->getQpNum()] = client;
 
     // Add completion queue to completion channel.
-    _completionChannel->addCompletionQ(completionQ);
+//    _completionChannel->addCompletionQ(completionQ);
 
     this->refill_client_receives();
 
@@ -336,7 +341,7 @@ void RdmaController::eventChannelHandler(void) {
     if (err != 0) {
       printf("error accepting client connection: %s\n", RdmaError::errorString(err));
       _clients.erase(client->getQpNum());
-      _completionChannel->removeCompletionQ(completionQ);
+//      _completionChannel->removeCompletionQ(completionQ);
       client->reject(); // Tell client the bad news
       client.reset();
       completionQ.reset();
@@ -406,7 +411,7 @@ void RdmaController::eventChannelHandler(void) {
     client.reset();
 
     // Remove completion queue from the completion channel.
-    _completionChannel->removeCompletionQ(completionQ);
+//    _completionChannel->removeCompletionQ(completionQ);
 
     // Destroy the completion queue.
     LOG_DEBUG_MSG("destroying completion queue " << completionQ->getHandle());
@@ -449,7 +454,7 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_typ
                 client = _clients[completion->qp_num].get();
             }
             if (this->_completionFunction) {
-                this->_completionFunction(completion, client);
+//                this->_completionFunction(completion, client);
             }
         }
     }
@@ -470,8 +475,10 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
 
   RdmaCompletionQueuePtr completionQ;
   try {
+//    completionQ = std::make_shared < RdmaCompletionQueue >
+//      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
     completionQ = std::make_shared < RdmaCompletionQueue >
-      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
+      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
   } catch (bgcios::RdmaError& e) {
     LOG_ERROR_MSG("error creating completion queue: " << e.what());
   }
@@ -492,7 +499,7 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   _clients[newClient->getQpNum()] = newClient;
 
   // Add completion queue to completion channel.
-  _completionChannel->addCompletionQ(completionQ);
+//  _completionChannel->addCompletionQ(completionQ);
 
   newClient->setMemoryPool(_memoryPool);
   this->refill_client_receives();
@@ -525,7 +532,7 @@ void RdmaController::removeServerToServerConnection(RdmaClientPtr client)
     client.reset();
 
     // Remove completion queue from the completion channel.
-    _completionChannel->removeCompletionQ(completionQ);
+//    _completionChannel->removeCompletionQ(completionQ);
 
     // Destroy the completion queue.
     LOG_DEBUG_MSG("destroying completion queue " << completionQ->getHandle());

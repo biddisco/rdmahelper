@@ -132,6 +132,21 @@ RdmaCompletionQueue::ackEvents(unsigned int numEvents)
    return;
 }
 
+int RdmaCompletionQueue::poll_completion(struct ibv_wc *completion)
+{
+    int nc = ibv_poll_cq(_completionQ, 1, completion);
+    if (nc < 0) {
+        RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
+        LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
+        throw e;
+    }
+    if (nc>0) {
+        LOG_CIOS_TRACE_MSG(_tag << " removing " << hexpointer(completion->wr_id)
+                << RdmaCompletionQueue::wc_opcode_str(completion->opcode));
+    }
+    return nc;
+}
+
 // Remove the work completions from the completion queue.
 int RdmaCompletionQueue::removeCompletions(int numEntries)
 {

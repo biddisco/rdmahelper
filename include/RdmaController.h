@@ -83,6 +83,8 @@ public:
    //! \return Number of events handled
 
    int eventMonitor(int Nevents);
+   int pollCompletionQueues();
+   int pollEventChannel();
 
    //! Listener for RDMA connections.
    bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
@@ -103,7 +105,7 @@ public:
 
    unsigned int getPort() { return _port; }
 
-   typedef std::function<int(struct ibv_wc *completion, RdmaClient *client)> CompletionFunction;
+   typedef std::function<int(struct ibv_wc completion, RdmaClient *client)> CompletionFunction;
    void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
 
    void freeRegion(RdmaMemoryRegion *region);
