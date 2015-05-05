@@ -14,12 +14,12 @@
 #define __RdmaMemoryPool_hpp_
 
 #ifdef HPX_HAVE_PARCELPORT_VERBS
-# ifndef RDMAHELPER_HPX_COMPATIBILITY
-#  define RDMAHELPER_HPX_COMPATIBILITY
+# ifndef RDMAHELPER_HAVE_HPX
+#  define RDMAHELPER_HAVE_HPX
 # endif
 #endif
 
-#ifdef RDMAHELPER_HPX_COMPATIBILITY
+#ifdef RDMAHELPER_HAVE_HPX
  #include <hpx/lcos/local/spinlock.hpp>
  #include <hpx/lcos/local/recursive_mutex.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
@@ -63,7 +63,7 @@ using namespace bgcios;
 
 struct RdmaMemoryPool;
 
-#ifdef RDMAHELPER_HPX_COMPATIBILITY
+#ifdef RDMAHELPER_HAVE_HPX
 // specialize chunk pool allocator traits for this memory_chunk_pool
 namespace hpx { namespace traits
 {
@@ -135,7 +135,7 @@ struct RdmaMemoryPool : boost::noncopyable
 //     new ((void*)p) T(47);
 //   }
 
-#ifdef RDMAHELPER_HPX_COMPATIBILITY
+#ifdef RDMAHELPER_HAVE_HPX
   typedef hpx::lcos::local::spinlock              mutex_type;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;

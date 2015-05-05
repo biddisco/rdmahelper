@@ -152,7 +152,7 @@ private:
 
    RdmaMemoryPoolPtr _memoryPool;
 
-#ifdef RDMAHELPER_HPX_COMPATIBILITY
+#ifdef RDMAHELPER_HAVE_HPX
   typedef hpx::lcos::local::spinlock              mutex_type;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
   typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;

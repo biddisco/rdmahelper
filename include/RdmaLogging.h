@@ -34,7 +34,7 @@
 //
 // HPX support
 //
-#  ifdef RDMAHELPER_HPX_COMPATIBILITY
+#  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/config.hpp>
 #    include <hpx/hpx_fwd.hpp>
 #  endif
@@ -69,7 +69,7 @@
 //
 // Logging enabled
 //
-#  ifdef RDMAHELPER_HPX_COMPATIBILITY
+#  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/config.hpp>
 #  endif
 
@@ -141,7 +141,7 @@
 #  define CIOSLOGMSG_WC(ID,wc)                BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGMSG_WC   " << ToString((BGCIOS_type)(ID)) << " " << hexpointer(((struct ibv_wc *)wc)->wr_id);
 #  define CIOSLOGPOSTSEND(ID,send_wr,err)     BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGPOSTSEND " << ToString((BGCIOS_type)(ID)) << " " << hexpointer(send_wr.wr_id) << " " << err;
 #  define CIOSLOGEVT_CH(ID,event)             BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGEVT_CH   " << ToString((BGCIOS_type)(ID)) << " " << event;
-#  ifdef RDMAHELPER_HPX_COMPATIBILITY
+#  ifdef RDMAHELPER_HAVE_HPX
 #   include <hpx/config.hpp>
 #   include <hpx/hpx_fwd.hpp>
 #  endif
