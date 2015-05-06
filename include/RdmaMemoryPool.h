@@ -32,9 +32,6 @@
 //
 #include <atomic>
 #include <stack>
-#include <queue>
-#include <vector>
-#include <map>
 #include <unordered_map>
 #include <iostream>
 //
@@ -82,6 +79,16 @@ struct RdmaMemoryPool : boost::noncopyable
 {
   typedef std::size_t size_type;
   typedef char        value_type;
+
+#ifdef RDMAHELPER_HAVE_HPX
+  typedef hpx::lcos::local::spinlock              mutex_type;
+  typedef hpx::lcos::local::spinlock::scoped_lock scoped_lock;
+  typedef hpx::lcos::local::condition_variable    condition_type;
+#else
+  typedef std::mutex                    mutex_type;
+  typedef std::lock_guard<std::mutex>   scoped_lock;
+  typedef std::condition_variable       condition_type;
+#endif
 
 #ifndef __BGQ__
   RdmaMemoryPool(RdmaProtectionDomainPtr pd, std::size_t chunk_size, std::size_t init_chunks, std::size_t max_chunks) :
@@ -136,25 +143,13 @@ struct RdmaMemoryPool : boost::noncopyable
 //     new ((void*)p) T(47);
 //   }
 
-#ifdef RDMAHELPER_HAVE_HPX
-  typedef hpx::lcos::local::spinlock              mutex_type;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;
-  typedef hpx::lcos::local::condition_variable    condition_type;
-#else
-  typedef std::mutex                    mutex_type;
-  typedef std::lock_guard<std::mutex>   lock_type1;
-  typedef std::unique_lock<std::mutex>  lock_type2;
-  typedef std::condition_variable       condition_type;
-#endif
-
   // not used any more, but keep for a while ...
   static const uint32_t mempool_VIRTUAL_DATA_ALIGNMENT = 65536;
 
   // every block we allocate will be added to this map so that
   // we hold a reference count to them and prevent their deletion
   // this list is only used at start and finish
-  std::map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
+  std::unordered_map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
 
   // blocks that have not been allocated are available from here
   std::stack<RdmaMemoryRegion*>                    free_list_;

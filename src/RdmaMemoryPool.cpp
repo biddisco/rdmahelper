@@ -39,7 +39,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 {
   //LOG_DEBUG_MSG("allocate region with this pointer " << hexpointer(this))
   // we must protect our queue from thread contention
-  lock_type2 lock(memBuffer_mutex);
+  scoped_lock lock(memBuffer_mutex);
 
   // if we have not exceeded our max size, allocate a new block
   if (free_list_.empty() && block_list_.size()<max_chunks_) {
@@ -81,7 +81,7 @@ void RdmaMemoryPool::deallocate(void *address, size_t size)
 void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
 {
   // we must protect our mem buffer from thread contention
-  lock_type2 lock(memBuffer_mutex);
+  scoped_lock lock(memBuffer_mutex);
 
   // put the block back on the free list
   free_list_.push(region);
@@ -96,7 +96,6 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
   
   this->memBuffer_cond.notify_one();
   LOG_TRACE_MSG("notify one called");
-  return;
 }
 //----------------------------------------------------------------------------
 RdmaMemoryRegion* RdmaMemoryPool::AllocateRegisteredBlock(int length)
