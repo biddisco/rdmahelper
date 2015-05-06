@@ -43,7 +43,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
-//#include <Cioslog.h>
+#include <boost/lexical_cast.hpp>
 
 using namespace bgcios;
 const int RdmaCompletionQueue::MaxQueueSize;
@@ -141,6 +141,15 @@ int RdmaCompletionQueue::poll_completion(struct ibv_wc *completion)
         throw e;
     }
     if (nc>0) {
+        if (completion->status != IBV_WC_SUCCESS) {
+            LOG_ERROR_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+                    << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+        }
+        else {
+            LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+                    << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+        }
+
         LOG_CIOS_TRACE_MSG(_tag << " removing " << hexpointer(completion->wr_id)
                 << RdmaCompletionQueue::wc_opcode_str(completion->opcode));
     }
@@ -217,6 +226,8 @@ std::string const RdmaCompletionQueue::wc_opcode_str(ibv_wc_opcode opcode)
       case IBV_WC_BIND_MW: str = "IBV_WC_BIND_MW"; break;
       case IBV_WC_RECV: str = "IBV_WC_RECV"; break;
       case IBV_WC_RECV_RDMA_WITH_IMM: str = "IBV_WC_RECV_RDMA_WITH_IMM"; break;
+      default :
+          str = "Got an unknown opcode " + boost::lexical_cast<std::string>(opcode);
    }
 
    return str;
