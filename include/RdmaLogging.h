@@ -51,7 +51,7 @@
 #  define LOG_TRACE_MSG(x)
 #  define LOG_INFO_MSG(x)
 #  define LOG_WARN_MSG(x)
-#  define LOG_ERROR_MSG(x)
+#  define LOG_ERROR_MSG(x) std::cout << x << " " << __FILE__ << " " << __LINE__ << std::endl;
 
 #  define FUNC_START_DEBUG_MSG
 #  define FUNC_END_DEBUG_MSG
