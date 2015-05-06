@@ -44,8 +44,8 @@
 
 #include "rdma_messages.h"
 
-#define PREPOSTS 4
-#define DEFAULT_CHUNKS_ALLOC 8
+#define PREPOSTS 64
+#define DEFAULT_CHUNKS_ALLOC 64
 
 // the maximum number of chunks we can alocate in our pool
 #if defined(HPX_HAVE_PARCELPORT_VERBS_MAX_MEMORY_CHUNKS)
