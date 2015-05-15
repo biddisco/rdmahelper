@@ -46,7 +46,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
     LOG_TRACE_MSG("Creating new Block as free list is empty but max chunks " << max_chunks_ << " not reached");
     AllocateRegisteredBlock(length);
   }
-  // make sure the deque is not empty, wait on condition
+  // make sure the list is not empty, wait on condition
   this->memBuffer_cond.wait(lock, [this] {
     return !free_list_.empty();
   });
@@ -90,10 +90,10 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
   this->region_ref_count_--;
 
   LOG_TRACE_MSG("Pushing Block"
-      << " region  " << hexpointer(region)
-      << " buffer  " << hexpointer(region->getAddress())
-      << " free "    << decnumber(free_list_.size()) << " used " << decnumber(this->region_ref_count_));
-  
+      << " region " << hexpointer(region)
+      << " buffer " << hexpointer(region->getAddress())
+      << " free "   << decnumber(free_list_.size()) << " used " << decnumber(this->region_ref_count_));
+
   this->memBuffer_cond.notify_one();
   LOG_TRACE_MSG("notify one called");
 }

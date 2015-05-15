@@ -21,7 +21,7 @@
 
 #ifdef RDMAHELPER_HAVE_HPX
  #include <hpx/lcos/local/spinlock.hpp>
- #include <hpx/lcos/local/recursive_mutex.hpp>
+ #include <hpx/lcos/local/mutex.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
  #include <hpx/traits/is_chunk_allocator.hpp>
  #include <hpx/util/memory_chunk_pool_allocator.hpp>
@@ -81,9 +81,10 @@ struct RdmaMemoryPool : boost::noncopyable
   typedef char        value_type;
 
 #ifdef RDMAHELPER_HAVE_HPX
-  typedef hpx::lcos::local::spinlock              mutex_type;
-  typedef hpx::lcos::local::spinlock::scoped_lock scoped_lock;
-  typedef hpx::lcos::local::condition_variable    condition_type;
+  typedef hpx::lcos::local::spinlock                mutex_type;
+  typedef hpx::lcos::local::spinlock::scoped_lock   scoped_lock;
+  typedef boost::unique_lock<mutex_type>            unique_lock;
+  typedef hpx::lcos::local::condition_variable      condition_type;
 #else
   typedef std::mutex                    mutex_type;
   typedef std::lock_guard<std::mutex>   scoped_lock;
@@ -170,7 +171,7 @@ struct RdmaMemoryPool : boost::noncopyable
   std::size_t                chunk_size_;
   std::size_t                max_chunks_;
   std::atomic<int>           region_ref_count_;
-  mutable mutex_type         large_chunks_mtx_;
+//  mutable mutex_type         large_chunks_mtx_;
  };
 
 typedef std::shared_ptr<RdmaMemoryPool> RdmaMemoryPoolPtr;
