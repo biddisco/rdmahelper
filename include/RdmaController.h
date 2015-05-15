@@ -40,6 +40,7 @@
 #include <iostream>
 #include <functional>
 #include <map>
+#include <atomic>
 
 namespace bgcios
 {
@@ -49,128 +50,132 @@ namespace bgcios
 class RdmaController
 {
 public:
-  typedef std::pair<uint32_t, RdmaClientPtr> ClientMapPair;
+    typedef std::pair<uint32_t, RdmaClientPtr> ClientMapPair;
 
-   //! \brief  Default constructor.
-   //! \param  config Configuration from command line and properties file.
+#ifdef RDMAHELPER_HAVE_HPX
+    typedef hpx::lcos::local::mutex                  mutex_type;
+    typedef hpx::lcos::local::mutex::scoped_try_lock scoped_try_lock;
+    typedef boost::unique_lock<mutex_type>           unique_lock;
+    typedef hpx::lcos::local::condition_variable     condition_type;
+#else
+    typedef std::mutex                    mutex_type;
+    typedef std::lock_guard<std::mutex>   scoped_lock;
+    typedef std::unique_lock<std::mutex>  unique_lock;
+#endif
 
-   RdmaController(const char *device, const char *interface, int port);
+    //! \brief  Default constructor.
+    //! \param  config Configuration from command line and properties file.
 
-   //! \brief  Default destructor.
+    RdmaController(const char *device, const char *interface, int port);
 
-   ~RdmaController();
+    //! \brief  Default destructor.
 
-   //! \brief  Open all connections needed by the service daemon.
-   //! \param  dataChannelPort Port number for listening data channel socket.
-   //! \return 0 when successful, errno when unsuccessful.
+    ~RdmaController();
 
-   int startup();
+    //! \brief  Open all connections needed by the service daemon.
+    //! \param  dataChannelPort Port number for listening data channel socket.
+    //! \return 0 when successful, errno when unsuccessful.
 
-   bool isTerminated() { return (_clients.size()==0); }
+    int startup();
 
-   typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
-   void setConnectionFunction(ConnectionFunction f) { this->_connectionFunction = f;}
+    bool isTerminated() { return (_clients.size()==0); }
 
-   typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
-   void setDonnectionFunction(DisconnectionFunction f) { this->_disconnectionFunction = f;}
+    typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
+    void setConnectionFunction(ConnectionFunction f) { this->_connectionFunction = f;}
 
-   //! \brief  Close all connections needed by the service daemon.
-   //! \return 0 when successful, errno when unsuccessful.
+    typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
+    void setDonnectionFunction(DisconnectionFunction f) { this->_disconnectionFunction = f;}
 
-   int cleanup(void);
+    //! \brief  Close all connections needed by the service daemon.
+    //! \return 0 when successful, errno when unsuccessful.
 
-   //! \brief  Monitor for events from all channels.
-   //! \return Number of events handled
+    int cleanup(void);
 
-   int eventMonitor(int Nevents);
-   int pollCompletionQueues();
-   int pollEventChannel();
+    //! \brief  Monitor for events from all channels.
+    //! \return Number of events handled
 
-   //! Listener for RDMA connections.
-   bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
-   bgcios::RdmaProtectionDomainPtr getProtectionDomain() { return this->_protectionDomain; }
-   bgcios::RdmaClientPtr getClient(uint32_t qp) {
-     return _clients[qp];
-   }
+    int eventMonitor(int Nevents);
+    int pollCompletionQueues();
+    int pollEventChannel();
 
-   RdmaMemoryPoolPtr getMemoryPool() { return _memoryPool; }
+    //! Listener for RDMA connections.
+    bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
+    bgcios::RdmaProtectionDomainPtr getProtectionDomain() { return this->_protectionDomain; }
+    bgcios::RdmaClientPtr getClient(uint32_t qp) {
+        return _clients[qp];
+    }
 
-   template <typename Function>
-   void for_each_client(Function lambda)
-   {
-     std::for_each(_clients.begin(), _clients.end(), lambda);
-   }
+    RdmaMemoryPoolPtr getMemoryPool() { return _memoryPool; }
 
-   bgcios::RdmaCompletionChannelPtr GetCompletionChannel() { return this->_completionChannel; }
+    template <typename Function>
+    void for_each_client(Function lambda)
+    {
+        std::for_each(_clients.begin(), _clients.end(), lambda);
+    }
 
-   unsigned int getPort() { return _port; }
+    bgcios::RdmaCompletionChannelPtr GetCompletionChannel() { return this->_completionChannel; }
 
-   typedef std::function<int(struct ibv_wc completion, RdmaClient *client)> CompletionFunction;
-   void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
+    unsigned int getPort() { return _port; }
 
-   void freeRegion(RdmaMemoryRegion *region);
+    typedef std::function<int(struct ibv_wc completion, RdmaClient *client)> CompletionFunction;
+    void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
 
-   int num_clients() { return _clients.size(); }
+    void freeRegion(RdmaMemoryRegion *region);
 
-   void refill_client_receives();
+    int num_clients() { return _clients.size(); }
 
-   RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
-   void removeServerToServerConnection(RdmaClientPtr client);
+    void refill_client_receives();
+
+    RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
+    void removeServerToServerConnection(RdmaClientPtr client);
 
 private:
 
-   void eventChannelHandler(void);
+    void eventChannelHandler(void);
 
-   //! \brief  Handle events from completion channel.
-   //! \return Nothing.
+    //! \brief  Handle events from completion channel.
+    //! \return Nothing.
 
-   bool completionChannelHandler(uint64_t requestId);
+    bool completionChannelHandler(uint64_t requestId);
 
-   std::string _device;
-   std::string _interface;
-   int         _port;
-   uint32_t    _localAddr; // equivalent to in_addr_t
-   std::string _localAddrString;
-   std::string _localPortString;
+    std::string _device;
+    std::string _interface;
+    int         _port;
+    uint32_t    _localAddr; // equivalent to in_addr_t
+    std::string _localAddrString;
+    std::string _localPortString;
+    std::atomic<uint32_t> event_poll_count;
 
-   CompletionFunction       _completionFunction;
-   ConnectionFunction       _connectionFunction;
-   DisconnectionFunction    _disconnectionFunction;
+    CompletionFunction       _completionFunction;
+    ConnectionFunction       _connectionFunction;
+    DisconnectionFunction    _disconnectionFunction;
 
-   //! Listener for RDMA connections.
-   bgcios::RdmaServerPtr _rdmaListener;
+    //! Listener for RDMA connections.
+    bgcios::RdmaServerPtr _rdmaListener;
 
-   //! Protection domain for all resources.
-   bgcios::RdmaProtectionDomainPtr _protectionDomain;
+    //! Protection domain for all resources.
+    bgcios::RdmaProtectionDomainPtr _protectionDomain;
 
-   //! Completion channel for all completion queues.
-   bgcios::RdmaCompletionChannelPtr _completionChannel;
+    //! Completion channel for all completion queues.
+    bgcios::RdmaCompletionChannelPtr _completionChannel;
 
-   //! Map of all active clients indexed by queue pair number.
-   std::map<uint32_t, RdmaClientPtr> _clients;
+    //! Map of all active clients indexed by queue pair number.
+    std::map<uint32_t, RdmaClientPtr> _clients;
 
-   //! Large memory region for transferring data (used for both inbound and outbound data).
-   bgcios::RdmaMemoryRegionPtr _largeRegion;
+    //! Large memory region for transferring data (used for both inbound and outbound data).
+    bgcios::RdmaMemoryRegionPtr _largeRegion;
 
-   RdmaMemoryPoolPtr _memoryPool;
+    RdmaMemoryPoolPtr _memoryPool;
 
-#ifdef RDMAHELPER_HAVE_HPX
-  typedef hpx::lcos::local::spinlock              mutex_type;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type1;
-  typedef hpx::lcos::local::spinlock::scoped_lock lock_type2;
-#else
-  typedef std::mutex                    mutex_type;
-  typedef std::lock_guard<std::mutex>   lock_type1;
-  typedef std::unique_lock<std::mutex>  lock_type2;
-#endif
+    mutex_type      _event_mutex;
+    condition_type  _event_cond;
 
-  mutex_type completion_mutex;
-   //! \brief  Transfer data to the client from the large memory region.
-   //! \param  address Address of remote memory region.
-   //! \param  rkey Key of remote memory region.
-   //! \param  length Length of data to transfer.
-   //! \return 0 when successful, error when unsuccessful.
-/*
+    //! \brief  Transfer data to the client from the large memory region.
+    //! \param  address Address of remote memory region.
+    //! \param  rkey Key of remote memory region.
+    //! \param  length Length of data to transfer.
+    //! \return 0 when successful, error when unsuccessful.
+    /*
    uint32_t putData(const RdmaClientPtr& client, uint64_t address, uint32_t rkey, uint32_t length)
    {
        uint32_t rc = 0;
@@ -232,7 +237,7 @@ private:
 
        return rc;
    }
-*/
+     */
 
 };
 

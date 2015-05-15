@@ -63,6 +63,7 @@ RdmaController::RdmaController(const char *device, const char *interface, int po
   this->_interface = interface;
   this->_port      = port;
   this->_localAddr = 0xFFFFFFFF;
+  event_poll_count = 0;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -241,7 +242,15 @@ int RdmaController::pollCompletionQueues()
     return ntot;
 }
 /*---------------------------------------------------------------------------*/
-int RdmaController::pollEventChannel() {
+int RdmaController::pollEventChannel()
+{
+    // there is no need for more than one thread to poll the event channel
+    // so try the lock and if someone has it, leave immediately
+    scoped_try_lock lock(_event_mutex);
+    if (!lock.owns_lock()) {
+        return 0;
+    }
+
     const int eventChannel = 0;
     const int numFds = 1;
     //
@@ -282,7 +291,9 @@ int RdmaController::eventMonitor(int Nevents)
 {
   int events_handled = 0;
   events_handled += pollCompletionQueues();
-  events_handled += pollEventChannel();
+  if (event_poll_count++ % 10 == 0) {
+    events_handled += pollEventChannel();
+  }
   return events_handled;
 }
 
@@ -447,7 +458,6 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_typ
             struct ibv_wc *completion;
             // the completion queue isn't yet thread safe, so only allow one thread at a time to pop a completion
             {
-                //lock_type1 lock(completion_mutex);
                 completion = completionQ->popCompletion();
                 LOG_DEBUG_MSG("Controller completion - removing wr_id " << hexpointer(completion->wr_id));
                 // Find the connection that received the message.
