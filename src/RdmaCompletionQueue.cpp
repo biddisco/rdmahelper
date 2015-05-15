@@ -143,7 +143,10 @@ int RdmaCompletionQueue::poll_completion(struct ibv_wc *completion)
     if (nc>0) {
         if (completion->status != IBV_WC_SUCCESS) {
             LOG_ERROR_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
-                    << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
+                    << "' for operation " << wc_opcode_str(completion->opcode)
+                    <<  " (" << completion->opcode << ") "
+                    << hexpointer(completion->wr_id));
+            std::terminate();
         }
         else {
             LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
