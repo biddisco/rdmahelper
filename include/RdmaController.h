@@ -129,6 +129,7 @@ public:
     RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
     void removeServerToServerConnection(RdmaClientPtr client);
 
+    void removeAllInitiatedConnections();
 private:
 
     void eventChannelHandler(void);

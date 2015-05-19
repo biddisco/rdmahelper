@@ -550,3 +550,21 @@ void RdmaController::removeServerToServerConnection(RdmaClientPtr client)
     completionQ.reset();
 }
 
+/*---------------------------------------------------------------------------*/
+void RdmaController::removeAllInitiatedConnections()
+{
+    while (std::count_if(_clients.begin(), _clients.end(),
+            [](const std::pair<uint32_t, RdmaClientPtr> & c) {
+                return c.second->getInitiatedConnection();
+            })>0)
+    {
+        std::map<uint32_t, RdmaClientPtr>::iterator c = _clients.begin();
+        while (c != _clients.end()) {
+            if (c->second->getInitiatedConnection()) {
+                LOG_DEBUG_MSG("Removing a connection");
+                removeServerToServerConnection(c->second);
+                break;
+            }
+        }
+    }
+}
