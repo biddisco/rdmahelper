@@ -73,6 +73,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 //----------------------------------------------------------------------------
 void RdmaMemoryPool::deallocate(void *address, size_t size)
 {
+  scoped_lock lock(memBuffer_mutex);
   RdmaMemoryRegion *region = pointer_map_[address];
   deallocate(region);
 }
@@ -81,7 +82,7 @@ void RdmaMemoryPool::deallocate(void *address, size_t size)
 void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
 {
   // we must protect our mem buffer from thread contention
-  scoped_lock lock(memBuffer_mutex);
+  unique_lock lock(memBuffer_mutex);
 
   // put the block back on the free list
   free_list_.push(region);
@@ -94,8 +95,10 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
       << " buffer " << hexpointer(region->getAddress())
       << " free "   << decnumber(free_list_.size()) << " used " << decnumber(this->region_ref_count_));
 
+  lock.unlock();
+  // if anyone was waiting on the free list lock, then give it
   this->memBuffer_cond.notify_one();
-  LOG_TRACE_MSG("notify one called");
+  LOG_TRACE_MSG("notify one called 1");
 }
 //----------------------------------------------------------------------------
 RdmaMemoryRegion* RdmaMemoryPool::AllocateRegisteredBlock(int length)
@@ -108,14 +111,17 @@ RdmaMemoryRegion* RdmaMemoryPool::AllocateRegisteredBlock(int length)
   region->allocate(rdma_fd_, length);
 #endif
   LOG_TRACE_MSG("Allocating registered block " << hexpointer(region->getAddress()) << hexlength(length));
+  unique_lock lock(memBuffer_mutex);
 
   free_list_.push(region.get());
   block_list_[region.get()] = region;
   pointer_map_[region->getAddress()] = region.get();
   LOG_TRACE_MSG("Adding registered block to buffer " << hexpointer(region->getAddress()));
 
+  lock.unlock();
   // if anyone was waiting on the free list lock, then give it
   this->memBuffer_cond.notify_one();
+  LOG_TRACE_MSG("notify one called 2");
 
   return region.get();
 }

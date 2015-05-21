@@ -135,7 +135,8 @@ struct RdmaMemoryPool : boost::noncopyable
    void              deallocate(RdmaMemoryRegion *region);
 
    RdmaMemoryRegion *RegionFromAddress(char * const addr) {
-     return pointer_map_[addr];
+       scoped_lock lock(memBuffer_mutex);
+       return pointer_map_[addr];
    }
 
    inline size_t default_chunk_size() { return chunk_size_; }
