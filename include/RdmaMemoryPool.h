@@ -44,8 +44,8 @@
 #endif
 
 // if the HPX configuration has set a default chunk size, use it
-#if defined(HPX_HAVE_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
-# define DEFAULT_MEMORY_POOL_CHUNK_SIZE HPX_HAVE_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
+#if defined(HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
+# define DEFAULT_MEMORY_POOL_CHUNK_SIZE HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
 #else
 // deliberately small to trigger exceptions whilst debugging
 # define DEFAULT_MEMORY_POOL_CHUNK_SIZE 256
