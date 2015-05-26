@@ -14,6 +14,7 @@
 #define RDMAHELPER_LOGGING_H_
 
 #include "rdmahelper/rdmahelper_defines.h"
+#include <iostream>
 #include <ostream>
 #include <iomanip>
 #include <sstream>
