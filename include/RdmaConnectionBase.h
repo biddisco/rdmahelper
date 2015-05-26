@@ -45,13 +45,13 @@ public:
     }
 
     /*---------------------------------------------------------------------------*/
-    void popReceive() {
+    void popReceive() const {
         uint64_t temp = --_waitingReceives;
         LOG_DEBUG_MSG("After decrement size of waiting receives is " << decnumber(temp));
     }
 
     /*---------------------------------------------------------------------------*/
-    void pushReceive() {
+    void pushReceive() const {
         uint64_t temp = ++_waitingReceives;
         LOG_DEBUG_MSG("After increment size of waiting receives is " << decnumber(temp));
     }
@@ -93,8 +93,8 @@ public:
     postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false) = 0;
 
 protected:
-    RdmaMemoryPoolPtr       _memoryPool;
-    std::atomic<uint64_t>   _waitingReceives;
+    RdmaMemoryPoolPtr             _memoryPool;
+    mutable std::atomic<uint64_t> _waitingReceives;
 
 };
 
