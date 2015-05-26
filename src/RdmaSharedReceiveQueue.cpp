@@ -31,7 +31,7 @@
   struct ibv_srq_attr {
           uint32_t                max_wr;         // Requested max number of outstanding work requests (WRs) in the SRQ
           uint32_t                max_sge;        // Requested max number of scatter elements per WR
-          uint32_t                srq_limit;      //* The limit value of the SRQ (irrelevant for ibv_create_srq)
+          uint32_t                srq_limit;      // The limit value of the SRQ (irrelevant for ibv_create_srq)
   };
 */
 
@@ -40,8 +40,8 @@ namespace bgcios
 
 //! Shared Receive Queue.
 
-#define VERBS_EP_RX_CNT         (4096)  /* default SRQ size */
-#define VERBS_EP_TX_CNT         (4096)  /* default send count */
+#define VERBS_EP_RX_CNT         (4096)  // default SRQ size
+#define VERBS_EP_TX_CNT         (4096)  // default send count
 
 RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain)
 {
