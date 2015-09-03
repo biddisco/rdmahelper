@@ -73,6 +73,9 @@
 #  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/config.hpp>
 #    include <hpx/runtime/threads/thread.hpp>
+#    define THREAD_ID (hpx::this_thread::get_id())
+#  else 
+#    define THREAD_ID ""
 #  endif
 
 //#include <boost/format.hpp>
@@ -101,12 +104,12 @@
 // need to put this one back ...
 #  define LOG_DECLARE_FILE(f)
 
-#  define LOG_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << hpx::this_thread::get_id() << " " << x;
-#  define LOG_WARN_MSG(x)  BOOST_LOG_TRIVIAL(warning) << hpx::this_thread::get_id() << " " << x;
-#  define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << hpx::this_thread::get_id() << " " << x;
-#  define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << hpx::this_thread::get_id() << " " << x;
+#  define LOG_TRACE_MSG(x) BOOST_LOG_TRIVIAL(trace)   << THREAD_ID << " " << x;
+#  define LOG_DEBUG_MSG(x) BOOST_LOG_TRIVIAL(debug)   << THREAD_ID << " " << x;
+#  define LOG_INFO_MSG(x)  BOOST_LOG_TRIVIAL(info)    << THREAD_ID << " " << x;
+#  define LOG_WARN_MSG(x)  BOOST_LOG_TRIVIAL(warning) << THREAD_ID << " " << x;
+#  define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << THREAD_ID << " " << x;
+#  define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << THREAD_ID << " " << x;
 
 #  define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__ << " ****************");
 #  define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__ << " ################");
