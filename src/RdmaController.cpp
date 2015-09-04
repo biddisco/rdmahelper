@@ -44,16 +44,6 @@
 
 #include "rdma_messages.h"
 
-#define PREPOSTS 31
-#define DEFAULT_CHUNKS_ALLOC 128
-
-// the maximum number of chunks we can alocate in our pool
-#if defined(HPX_HAVE_PARCELPORT_VERBS_MAX_MEMORY_CHUNKS)
-# define MAX_CHUNKS_ALLOC HPX_HAVE_PARCELPORT_VERBS_MAX_MEMORY_CHUNKS
-#else
-# define MAX_CHUNKS_ALLOC 128
-#endif
-
 using namespace bgcios;
 
 const uint64_t LargeRegionSize = 8192;
@@ -163,7 +153,7 @@ int RdmaController::startup() {
 
   // Create a memory pool for pinned buffers
   _memoryPool = std::make_shared < RdmaMemoryPool > (_protectionDomain,
-      DEFAULT_MEMORY_POOL_CHUNK_SIZE, DEFAULT_CHUNKS_ALLOC, MAX_CHUNKS_ALLOC);
+          RDMA_DEFAULT_MEMORY_POOL_CHUNK_SIZE, RDMA_DEFAULT_CHUNKS_ALLOC, RDMA_MAX_CHUNKS_ALLOC);
 
 #ifdef USE_SHARED_RECEIVE_QUEUE
   // create a shared receive queue
@@ -209,7 +199,7 @@ void RdmaController::freeRegion(RdmaMemoryRegion *region) {
 void RdmaController::refill_client_receives() {
   // make sure all clients have a pre-posted receive in their queues
   std::for_each(_clients.begin(), _clients.end(), [](RdmaController::ClientMapPair _client) {
-    _client.second->refill_preposts(PREPOSTS);
+    _client.second->refill_preposts(RDMA_MAX_PREPOSTS);
   });
 }
 

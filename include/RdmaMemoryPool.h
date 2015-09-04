@@ -43,12 +43,39 @@
   #include "CNKMemoryRegion.h"
 #endif
 
-// if the HPX configuration has set a default chunk size, use it
+#include "RdmaLogging.h"
+
+// the default memory chunk size in bytes
+#define RDMA_DEFAULT_MEMORY_POOL_CHUNK_SIZE 256
+// the default number of chunks we allocate with our pool
+#define RDMA_DEFAULT_CHUNKS_ALLOC 64
+// the maximum number of chunks we can allocate with our pool
+#define RDMA_MAX_CHUNKS_ALLOC 128
+// the maximum number of preposted receives
+#define RDMA_MAX_PREPOSTS 32
+
+// if the HPX configuration has set a different value, use it
 #if defined(HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
-# define DEFAULT_MEMORY_POOL_CHUNK_SIZE HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
-#else
-// deliberately small to trigger exceptions whilst debugging
-# define DEFAULT_MEMORY_POOL_CHUNK_SIZE 256
+# undef RDMA_DEFAULT_MEMORY_POOL_CHUNK_SIZE
+# define RDMA_DEFAULT_MEMORY_POOL_CHUNK_SIZE HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE
+#endif
+
+// if the HPX configuration has set a different value, use it
+#if defined(HPX_PARCELPORT_VERBS_DEFAULT_MEMORY_CHUNKS)
+# undef RDMA_DEFAULT_CHUNKS_ALLOC
+# define RDMA_DEFAULT_CHUNKS_ALLOC HPX_PARCELPORT_VERBS_DEFAULT_MEMORY_CHUNKS
+#endif
+
+// if the HPX configuration has set a different value, use it
+#if defined(HPX_PARCELPORT_VERBS_MAX_MEMORY_CHUNKS)
+# undef RDMA_MAX_CHUNKS_ALLOC
+# define RDMA_MAX_CHUNKS_ALLOC HPX_PARCELPORT_VERBS_MAX_MEMORY_CHUNKS
+#endif
+
+// if the HPX configuration has set a different value, use it
+#if defined(HPX_PARCELPORT_VERBS_MAX_PREPOSTS)
+# undef RDMA_MAX_PREPOSTS
+# define RDMA_MAX_PREPOSTS HPX_PARCELPORT_VERBS_MAX_PREPOSTS
 #endif
 
 class pinned_memory_exception : public std::runtime_error
@@ -103,6 +130,7 @@ struct RdmaMemoryPool : boost::noncopyable
   , max_chunks_(max_chunks)
   , region_ref_count_(0)
   {
+    LOG_DEBUG_MSG("Creating memory pool, chunk size " << decnumber(chunk_size_) << " max_chunks " << decnumber(max_chunks_));
     AllocateList(init_chunks);
   }
 
