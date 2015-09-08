@@ -53,6 +53,7 @@
 #  define LOG_INFO_MSG(x)
 #  define LOG_WARN_MSG(x)
 #  define LOG_ERROR_MSG(x) std::cout << x << " " << __FILE__ << " " << __LINE__ << std::endl;
+#  define LOG_ARRAY_MSG(m, p, n, t)
 
 #  define FUNC_START_DEBUG_MSG
 #  define FUNC_END_DEBUG_MSG
@@ -109,6 +110,19 @@
 #  define LOG_WARN_MSG(x)  BOOST_LOG_TRIVIAL(warning) << THREAD_ID << " " << x;
 #  define LOG_ERROR_MSG(x) BOOST_LOG_TRIVIAL(error)   << THREAD_ID << " " << x;
 #  define LOG_FATAL_MSG(x) BOOST_LOG_TRIVIAL(fatal)   << THREAD_ID << " " << x;
+
+#  define LOG_MEMORY_MSG(m, p, n) \
+        { \
+          const char *src = reinterpret_cast<const char*>(p); \
+          std::stringstream tmp; \
+          tmp << m << ' ' << hexpointer(p) << "= ("; \
+          for (uint32_t i=0; i<(n/sizeof(uint32_t)); i++) { \
+            uint32_t res; \
+            std::memcpy(&res, &src[i*sizeof(res)], sizeof(res)); \
+            tmp << hexuint32(res) << (((int)(i)<n-1) ? ',' : ')'); \
+          } \
+          LOG_DEBUG_MSG(tmp.str()) \
+        }
 
 #  define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__ << " ****************");
 #  define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__ << " ################");
