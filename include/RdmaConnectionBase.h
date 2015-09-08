@@ -64,8 +64,8 @@ public:
     void refill_preposts(unsigned int preposts) {
         LOG_DEBUG_MSG("Entering refill size of waiting receives is " << decnumber(_waitingReceives));
         while (this->getNumReceives()<preposts) {
-            LOG_DEBUG_MSG("Pre-Posting a receive to client");
-            RdmaMemoryRegion *region = this->getFreeRegion(this->_memoryPool->default_chunk_size());
+            LOG_DEBUG_MSG("Pre-Posting a receive to client size " << this->_memoryPool->small_.chunk_size_);
+            RdmaMemoryRegion *region = this->getFreeRegion(this->_memoryPool->small_.chunk_size_);
             this->postRecvRegionAsID(region, region->getLength(), false);
         }
     }
