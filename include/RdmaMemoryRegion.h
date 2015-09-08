@@ -101,13 +101,13 @@ public:
    }
 
    // overload operator->
-   unsigned char* operator->() const
+   inline unsigned char* operator->() const
    {
      return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
    }
 
    // overload operator*
-   unsigned char* operator*() const
+   inline unsigned char* operator*() const
    {
      return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
    }
@@ -115,7 +115,7 @@ public:
    //! \brief  Check if memory region has been allocated.
    //! \return True if memory region is allocated, otherwise false.
 
-   bool isAllocated(void) const { return _region != NULL ? true : false; }
+   inline bool isAllocated(void) const { return _region != NULL ? true : false; }
 
    //! \brief  Allocate and register a memory region.
    //! \param  pd Protection domain for memory region.
@@ -144,44 +144,38 @@ public:
    //! \brief  Get the address of the memory region.
    //! \return Address value.
 
-   void *getAddress(void) const { return _region->addr; }
+   inline void *getAddress(void) const { return _region->addr; }
 
    //! \brief  Get the length of the memory region.
    //! \return Length value.
 
-   uint32_t getLength(void) const { return (uint32_t)_region->length; }
+   inline uint32_t getLength(void) const { return (uint32_t)_region->length; }
 
    //! \brief  Get the local key of the memory region.
    //! \return Local key value.
 
-   uint32_t getLocalKey(void) const { return _region->lkey; }
+   inline uint32_t getLocalKey(void) const { return _region->lkey; }
 
    //! \brief  Get the remote key of the memory region.
    //! \return Remote key value.
 
-   uint32_t getRemoteKey(void) const { return _region->rkey; }
+   inline uint32_t getRemoteKey(void) const { return _region->rkey; }
 
    //! \brief  Set the length of a message in the memory region.
    //! \param  length New message length value.
    //! \return Nothing.
 
-   void setMessageLength(uint32_t length) { _messageLength = length; }
+   inline void setMessageLength(uint32_t length) { _messageLength = length; }
 
    //! \brief  Get the length of a message in the memory region.
    //! \return Message length value.
 
-   uint32_t getMessageLength(void) const { return _messageLength; }
+   inline uint32_t getMessageLength(void) const { return _messageLength; }
 
    //! \brief  Return indicator if a message is ready.
    //! \return True if a message is ready, otherwise false.
 
-   bool isMessageReady(void) const { return _messageLength > 0 ? true : false; }
-
-   //! \brief  Write info about the memory region to the specified stream.
-   //! \param  os Output stream to write to.
-   //! \return Output stream.
-
-   std::ostream& writeTo(std::ostream& os) const;
+   inline bool isMessageReady(void) const { return _messageLength > 0 ? true : false; }
 
    enum {
        BLOCK_USER = 1,
@@ -189,9 +183,15 @@ public:
    };
 
    //! Check is this region was constructed from user allocated memory
-   bool isUserRegion() { return (_flags & BLOCK_USER) == BLOCK_USER; }
-   bool isTempRegion() { return (_flags & BLOCK_TEMP) == BLOCK_TEMP; }
-   void setTempRegion() { _flags |= BLOCK_TEMP; }
+   inline bool isUserRegion() { return (_flags & BLOCK_USER) == BLOCK_USER; }
+   inline bool isTempRegion() { return (_flags & BLOCK_TEMP) == BLOCK_TEMP; }
+   inline void setTempRegion() { _flags |= BLOCK_TEMP; }
+
+   //! \brief  Write info about the memory region to the specified stream.
+   //! \param  os Output stream to write to.
+   //! \return Output stream.
+
+   std::ostream& writeTo(std::ostream& os) const;
 
 private:
 
