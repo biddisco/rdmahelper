@@ -109,15 +109,15 @@ RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr 
 RdmaConnection::~RdmaConnection(void)
 {
    // Destroy the rdma cm id and queue pair.
-   if (_cmId != NULL) {
-      if (_cmId->qp != NULL) {
+   if (_cmId != nullptr) {
+      if (_cmId->qp != nullptr) {
          rdma_destroy_qp(_cmId); // No return code
          LOG_CIOS_DEBUG_MSG(_tag << "destroyed queue pair");
       }
       
       if (rdma_destroy_id(_cmId) == 0) {
          LOG_CIOS_DEBUG_MSG(_tag << "destroyed rdma cm id " << _cmId);
-         _cmId = NULL;
+         _cmId = nullptr;
       }
       else {
          int err = errno;
@@ -126,10 +126,10 @@ RdmaConnection::~RdmaConnection(void)
    }
 
    // Destroy the event channel.
-   if (_eventChannel != NULL) {
+   if (_eventChannel != nullptr) {
      LOG_CIOS_TRACE_MSG(_tag << "destroying rdma event channel with fd " << hexnumber(_eventChannel->fd));
      rdma_destroy_event_channel(_eventChannel); // No return code
-     _eventChannel = NULL;
+     _eventChannel = nullptr;
    }
 
    LOG_CIOS_DEBUG_MSG(_tag << "destroyed connection");
@@ -140,8 +140,8 @@ void
 RdmaConnection::init(void)
 {
    // Initialize private data.
-   _eventChannel = NULL;
-   _event = NULL;
+   _eventChannel = nullptr;
+   _event = nullptr;
    memset(&_localAddress, 0, sizeof(_localAddress));
    memset(&_remoteAddress, 0, sizeof(_remoteAddress));
    _tag = "[QP ?] ";
@@ -158,7 +158,7 @@ RdmaConnection::createId(void)
 {
    // Create the event channel.
    _eventChannel = rdma_create_event_channel();
-   if (_eventChannel == NULL) {
+   if (_eventChannel == nullptr) {
       RdmaError e(EINVAL, "rdma_create_event_channel() failed");
       LOG_ERROR_MSG(_tag << "error creating rdma event channel: " << RdmaError::errorString(e.errcode()));
       throw e;
@@ -201,7 +201,7 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    LOG_DEBUG_MSG("After Create QP, SRQ is " << get_SRQ());
 
 //   _cmId->qp = ibv_create_qp(domain->getDomain(), &qpAttributes);
-//   int rc = (_cmId->qp==NULL);
+//   int rc = (_cmId->qp==nullptr);
 
    if (rc != 0) {
       RdmaError e(errno, "rdma_create_qp() failed");
@@ -231,7 +231,7 @@ RdmaConnection::resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in
 
    // Save the addresses.
    memcpy(&_remoteAddress, remoteAddr, sizeof(struct sockaddr_in));
-   if (localAddr != NULL) {
+   if (localAddr != nullptr) {
       memcpy(&_localAddress, localAddr, sizeof(struct sockaddr_in));
    }
 
@@ -265,14 +265,14 @@ RdmaConnection::migrateId(void)
    int err = 0;
 
    // Destroy the current event channel.
-   if (_eventChannel != NULL) {
+   if (_eventChannel != nullptr) {
       rdma_destroy_event_channel(_eventChannel);
-      _eventChannel = NULL;
+      _eventChannel = nullptr;
    }
 
    // Create a new event channel.
    _eventChannel = rdma_create_event_channel();
-   if (_eventChannel == NULL) {
+   if (_eventChannel == nullptr) {
       err = errno;
       std::cout << _tag << " failed to create event channel, error " << err << std::endl;
       return err;
@@ -312,7 +312,7 @@ int
 RdmaConnection::reject(void)
 {
    // Reject a connection request.
-   int err = rdma_reject(_cmId, NULL, 0);
+   int err = rdma_reject(_cmId, nullptr, 0);
    if (err != 0) {
       LOG_ERROR_MSG(_tag << "error rejecting connection from new client");
       return err;
@@ -475,7 +475,7 @@ RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmed
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
+   send_wr.next = nullptr;
    send_wr.sg_list = &send_sge;
    send_wr.num_sge = 1;
    if (withImmediate) {
@@ -515,7 +515,7 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
+   send_wr.next = nullptr;
    send_wr.sg_list = &send_sge[0];
    send_wr.num_sge = N;
    if (withImmediate) {
@@ -551,8 +551,8 @@ uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bo
     // Build a send work request.
     struct ibv_send_wr send_wr;
     memset(&send_wr, 0, sizeof(send_wr));
-    send_wr.next = NULL;
-    send_wr.sg_list = NULL;
+    send_wr.next = nullptr;
+    send_wr.sg_list = nullptr;
     send_wr.num_sge = 0;
     if (withImmediate) {
        send_wr.opcode = IBV_WR_SEND_WITH_IMM;
@@ -587,7 +587,7 @@ uint64_t RdmaConnection::postRead(RdmaMemoryRegion *localregion, uint32_t remote
     // Build a send work request.
     struct ibv_send_wr send_wr;
     memset(&send_wr, 0, sizeof(send_wr));
-    send_wr.next                = NULL;
+    send_wr.next                = nullptr;
     send_wr.sg_list             = &read_sge;
     send_wr.num_sge             = 1;
     send_wr.opcode              = IBV_WR_RDMA_READ;
@@ -617,7 +617,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t len
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
+   send_wr.next = nullptr;
    send_wr.sg_list = &send_sge;
    send_wr.num_sge = 1;
    send_wr.opcode = IBV_WR_SEND_WITH_IMM;
@@ -641,7 +641,7 @@ RdmaConnection::postRdmaWrite(RdmaMemoryRegionPtr region, uint64_t remoteAddr, u
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
+   send_wr.next = nullptr;
    send_wr.sg_list = &write_sge;
    send_wr.num_sge = 1;
    send_wr.opcode = IBV_WR_RDMA_WRITE;
@@ -667,7 +667,7 @@ RdmaConnection::postRdmaRead(RdmaMemoryRegionPtr region, uint64_t remoteAddr, ui
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   send_wr.next = NULL;
+   send_wr.next = nullptr;
    send_wr.sg_list = &read_sge;
    send_wr.num_sge = 1;
    send_wr.opcode = IBV_WR_RDMA_READ;
@@ -694,7 +694,7 @@ RdmaConnection::postRecv(RdmaMemoryRegionPtr region)
    // Build receive work request.
    struct ibv_recv_wr recv_wr;
    memset(&recv_wr, 0, sizeof(recv_wr));
-   recv_wr.next = NULL;
+   recv_wr.next = nullptr;
    recv_wr.sg_list = &recv_sge;
    recv_wr.num_sge = 1;
    recv_wr.wr_id = (uint64_t)region->getLocalKey(); // So memory region is available in work completion.
@@ -731,7 +731,7 @@ RdmaConnection::waitForEvent(void)
 int
 RdmaConnection::ackEvent(void)
 {
-   if (_event == NULL) {
+   if (_event == nullptr) {
       LOG_ERROR_MSG(_tag << "no rdma cm event available to ack");
       return ENOENT;
    }
@@ -744,7 +744,7 @@ RdmaConnection::ackEvent(void)
       return err;
    }
 
-   _event = NULL;
+   _event = nullptr;
    return 0;
 }
 
@@ -752,7 +752,7 @@ int
 RdmaConnection::stringToAddress(const std::string addrString, const std::string portString, struct sockaddr_in *address) const
 {
    struct addrinfo *res;
-   int err = getaddrinfo(addrString.c_str(), portString.c_str(), NULL, &res);
+   int err = getaddrinfo(addrString.c_str(), portString.c_str(), nullptr, &res);
    if (err != 0) {
       LOG_ERROR_MSG(_tag << "failed to get address info for " << addrString << ": " << RdmaError::errorString(err));
       return err;
@@ -788,7 +788,7 @@ RdmaConnection::getDeviceName(void)
 {
    std::string name;
    const char *namep = ibv_get_device_name(_cmId->verbs->device);
-   if (namep != NULL) {
+   if (namep != nullptr) {
       name = namep;
    }
 
