@@ -73,7 +73,7 @@
 //
 #  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/runtime/threads/thread.hpp>
-#    define THREAD_ID (hpx::this_thread::get_id())
+#    define THREAD_ID "" << hpx::this_thread::get_id()
 #  else 
 #    define THREAD_ID ""
 #  endif
