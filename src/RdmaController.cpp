@@ -240,7 +240,7 @@ int RdmaController::pollEventChannel()
 {
     // there is no need for more than one thread to poll the event channel
     // so try the lock and if someone has it, leave immediately
-    scoped_try_lock lock(_event_mutex);
+    unique_lock lock(_event_mutex, std::try_to_lock);
     if (!lock.owns_lock()) {
         return 0;
     }

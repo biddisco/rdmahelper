@@ -20,7 +20,6 @@
 #endif
 
 #ifdef RDMAHELPER_HAVE_HPX
- #include <hpx/lcos/local/spinlock.hpp>
  #include <hpx/lcos/local/mutex.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
  #include <hpx/traits/is_chunk_allocator.hpp>
@@ -124,9 +123,9 @@ struct pool_container
 {
     typedef std::function<RdmaMemoryRegionPtr(std::size_t)> regionAllocFunction;
 #ifdef RDMAHELPER_HAVE_HPX
-    typedef hpx::lcos::local::spinlock                mutex_type;
-    typedef hpx::lcos::local::spinlock::scoped_lock   scoped_lock;
-    typedef boost::unique_lock<mutex_type>            unique_lock;
+    typedef hpx::lcos::local::mutex                   mutex_type;
+    typedef std::lock_guard<mutex_type>               scoped_lock;
+    typedef std::unique_lock<mutex_type>              unique_lock;
     typedef hpx::lcos::local::condition_variable      condition_type;
 #else
     typedef std::mutex                    mutex_type;
@@ -197,7 +196,7 @@ struct pool_container
 
     RdmaMemoryRegion *pop() 
     {
-        scoped_lock lock(memBuffer_mutex_);
+        unique_lock lock(memBuffer_mutex_);
         // if we have not exceeded our max size, allocate a new block
         if (free_list_.empty() && block_list_.size()<max_chunks_) {
             // LOG_TRACE_MSG("Creating new small Block as free list is empty but max chunks " << max_small_chunks_ << " not reached");
@@ -236,9 +235,9 @@ struct RdmaMemoryPool : boost::noncopyable
     typedef char        value_type;
 
 #ifdef RDMAHELPER_HAVE_HPX
-    typedef hpx::lcos::local::spinlock                mutex_type;
-    typedef hpx::lcos::local::spinlock::scoped_lock   scoped_lock;
-    typedef boost::unique_lock<mutex_type>            unique_lock;
+    typedef hpx::lcos::local::mutex                   mutex_type;
+    typedef std::lock_guard<mutex_type>               scoped_lock;
+    typedef std::unique_lock<mutex_type>              unique_lock;
     typedef hpx::lcos::local::condition_variable      condition_type;
 #else
     typedef std::mutex                    mutex_type;

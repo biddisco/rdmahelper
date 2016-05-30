@@ -54,8 +54,7 @@ public:
 
 #ifdef RDMAHELPER_HAVE_HPX
     typedef hpx::lcos::local::mutex                  mutex_type;
-    typedef hpx::lcos::local::mutex::scoped_try_lock scoped_try_lock;
-    typedef boost::unique_lock<mutex_type>           unique_lock;
+    typedef std::unique_lock<mutex_type>             unique_lock;
     typedef hpx::lcos::local::condition_variable     condition_type;
 #else
     typedef std::mutex                    mutex_type;
