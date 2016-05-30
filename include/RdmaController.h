@@ -81,10 +81,21 @@ public:
     bool isTerminated() { return (_clients.size()==0); }
 
     typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
+    typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
+    typedef std::function<int()> PreConnectionFunction;
+
+    // Set a callback which will be called immediately after
+    // RDMA_CM_EVENT_CONNECT_REQUEST has been received. This can be useful to
+    // prevent two connections being established at the same time.
+    void setPreConnectionFunction(PreConnectionFunction f) { this->_preConnectionFunction = f;}
+
+    // Set a callback which will be called immediately after
+    // RDMA_CM_EVENT_ESTABLISHED has been received.
+    // This should be used to initialize all structures for handling a new connection
     void setConnectionFunction(ConnectionFunction f) { this->_connectionFunction = f;}
 
-    typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
-    void setDonnectionFunction(DisconnectionFunction f) { this->_disconnectionFunction = f;}
+    // currently not used.
+    void setDisconnectionFunction(DisconnectionFunction f) { this->_disconnectionFunction = f;}
 
     //! \brief  Close all connections needed by the service daemon.
     //! \return 0 when successful, errno when unsuccessful.
@@ -148,6 +159,7 @@ private:
     std::atomic<uint32_t> event_poll_count;
 
     CompletionFunction       _completionFunction;
+    PreConnectionFunction    _preConnectionFunction;
     ConnectionFunction       _connectionFunction;
     DisconnectionFunction    _disconnectionFunction;
 

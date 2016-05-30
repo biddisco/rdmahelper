@@ -220,8 +220,12 @@ int RdmaController::pollCompletionQueues()
             struct ibv_wc completion;
             nc = completionQ->poll_completion(&completion);
             if (nc>0) {
-                LOG_DEBUG_MSG("pollCompletionQueues - removing wr_id " << hexpointer(completion.wr_id) << " "
-                        << RdmaCompletionQueue::wc_opcode_str(completion.opcode));
+                if (completion.status != IBV_WC_SUCCESS) {
+                    LOG_ERROR_MSG("Message failed currect receive count is " << client->getNumReceives());
+                    LOG_DEBUG_MSG("pollCompletionQueues - removing wr_id " << hexpointer(completion.wr_id) << " "
+                            << RdmaCompletionQueue::wc_opcode_str(completion.opcode));
+                    std::terminate();
+                }
                 if (this->_completionFunction) {
                     this->_completionFunction(completion, client);
                 }
@@ -305,9 +309,21 @@ void RdmaController::eventChannelHandler(void) {
 
   case RDMA_CM_EVENT_CONNECT_REQUEST: {
     LOG_DEBUG_MSG("RDMA_CM_EVENT_CONNECT_REQUEST");
+    //
+    // prevent
+    //
+    if (this->_preConnectionFunction) {
+        LOG_DEBUG_MSG("calling connection callback ");
+        if (!this->_preConnectionFunction()) {
+            LOG_ERROR_MSG("We are already accepting a connection, so reject");
+            _rdmaListener->reject();
+        }
+    }
+
     // Construct a RdmaCompletionQueue object for the new client.
     RdmaCompletionQueuePtr completionQ;
     try {
+
 //      completionQ = std::make_shared < RdmaCompletionQueue
 //          > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
       completionQ = std::make_shared < RdmaCompletionQueue
