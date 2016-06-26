@@ -28,6 +28,9 @@
 #include <RdmaError.h>
 #include <RdmaDevice.h>
 #include <RdmaCompletionQueue.h>
+//
+#include <boost/lexical_cast.hpp>
+//
 #include <poll.h>
 #include <errno.h>
 #include <iomanip>
