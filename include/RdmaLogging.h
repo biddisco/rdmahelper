@@ -37,7 +37,6 @@
 //
 #  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/config.hpp>
-#    include <hpx/hpx_fwd.hpp>
 #  endif
 
 //
@@ -161,7 +160,6 @@
 #  define CIOSLOGEVT_CH(ID,event)             BOOST_LOG_TRIVIAL(trace)   << "CIOSLOGEVT_CH   " << ToString((BGCIOS_type)(ID)) << " " << event;
 #  ifdef RDMAHELPER_HAVE_HPX
 #   include <hpx/config.hpp>
-#   include <hpx/hpx_fwd.hpp>
 #  endif
 
 #endif // RDMAHELPER_DISABLE_LOGGING
