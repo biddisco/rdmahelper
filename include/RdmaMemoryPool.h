@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 #ifndef __RdmaMemoryPool_hpp_
@@ -21,6 +21,7 @@
 
 #ifdef RDMAHELPER_HAVE_HPX
  #include <hpx/lcos/local/mutex.hpp>
+ #include <hpx/lcos/local/spinlock.hpp>
  #include <hpx/lcos/local/condition_variable.hpp>
  #include <hpx/traits/is_chunk_allocator.hpp>
  #include <hpx/util/memory_chunk_pool_allocator.hpp>
@@ -123,10 +124,10 @@ struct pool_container
 {
     typedef std::function<RdmaMemoryRegionPtr(std::size_t)> regionAllocFunction;
 #ifdef RDMAHELPER_HAVE_HPX
-    typedef hpx::lcos::local::mutex                   mutex_type;
+    typedef hpx::lcos::local::spinlock                   mutex_type;
     typedef std::lock_guard<mutex_type>               scoped_lock;
     typedef std::unique_lock<mutex_type>              unique_lock;
-    typedef hpx::lcos::local::condition_variable      condition_type;
+    typedef hpx::lcos::local::condition_variable_any      condition_type;
 #else
     typedef std::mutex                    mutex_type;
     typedef std::lock_guard<std::mutex>   scoped_lock;
@@ -181,34 +182,52 @@ struct pool_container
     }
 
     // ------------------------------------------------------------------------
-    void push(RdmaMemoryRegion *region) 
+    void push(RdmaMemoryRegion *region)
     {
         LOG_TRACE_MSG("Push block " << hexpointer(region->getAddress()) << hexlength(region->getLength()));
         // we must protect our mem buffer from thread contention
-        unique_lock lock(memBuffer_mutex_);
+        unique_lock lock1(memBuffer_mutex_);
+        //
+#ifndef NDEBUG
+        auto it = free_list_.begin();
+        while (it != free_list_.end()) {
+          if (*it == region) {
+              LOG_ERROR_MSG("FATAL : Pushing an existing region back to the memory pool");
+              std::terminate();
+          }
+          ++it;
+        }
+        free_list_.push_back(region);
+#else
         free_list_.push(region);
+#endif
         // decrement one reference
         region_use_count_--;
-        lock.unlock();
+        lock1.unlock();
         // if anyone was waiting on the free list lock, then give it
         memBuffer_cond_.notify_one();
     }
 
-    RdmaMemoryRegion *pop() 
+    RdmaMemoryRegion *pop()
     {
-        unique_lock lock(memBuffer_mutex_);
+        unique_lock lock1(memBuffer_mutex_);
         // if we have not exceeded our max size, allocate a new block
         if (free_list_.empty() && block_list_.size()<max_chunks_) {
             // LOG_TRACE_MSG("Creating new small Block as free list is empty but max chunks " << max_small_chunks_ << " not reached");
             //  AllocateRegisteredBlock(length);
         }
         // make sure the list is not empty, wait on condition
-        memBuffer_cond_.wait(lock, [this] {
+        memBuffer_cond_.wait(lock1, [this] {
             return !free_list_.empty();
         });
         // get a block
+#ifndef NDEBUG
+        RdmaMemoryRegion *region = free_list_.back();
+        free_list_.pop_back();
+#else
         RdmaMemoryRegion *region = free_list_.top();
         free_list_.pop();
+#endif
         // Keep reference counts to self so that we can check
         // this pool is not deleted whilst blocks still exist
         region_use_count_++;
@@ -220,7 +239,11 @@ struct pool_container
     std::size_t                     chunk_size_;
     std::size_t                     max_chunks_;
     std::atomic<int>                region_use_count_;
+#ifndef NDEBUG
+    std::deque<RdmaMemoryRegion*>   free_list_;
+#else
     std::stack<RdmaMemoryRegion*>   free_list_;
+#endif
     mutex_type                      memBuffer_mutex_;
     condition_type                  memBuffer_cond_;
     std::unordered_map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
