@@ -53,9 +53,10 @@ public:
     typedef std::pair<uint32_t, RdmaClientPtr> ClientMapPair;
 
 #ifdef RDMAHELPER_HAVE_HPX
-    typedef hpx::lcos::local::mutex                  mutex_type;
+    typedef hpx::lcos::local::spinlock               mutex_type;
+//    typedef hpx::lcos::local::mutex                  mutex_type;
     typedef std::unique_lock<mutex_type>             unique_lock;
-    typedef hpx::lcos::local::condition_variable     condition_type;
+    typedef hpx::lcos::local::condition_variable_any condition_type;
 #else
     typedef std::mutex                    mutex_type;
     typedef std::lock_guard<std::mutex>   scoped_lock;
