@@ -335,6 +335,7 @@ struct RdmaMemoryPool : boost::noncopyable
     pool_container small_;
     pool_container medium_;
     pool_container large_;
+    std::atomic<int> temp_regions;
 
 };
 

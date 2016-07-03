@@ -26,6 +26,7 @@ RdmaMemoryPool::RdmaMemoryPool(protection_domain_type pd, std::size_t chunk_size
 , small_ (RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE,  RDMA_DEFAULT_MEMORY_POOL_MAX_SMALL_CHUNKS)
 , medium_(RDMA_DEFAULT_MEMORY_POOL_MEDIUM_CHUNK_SIZE, RDMA_DEFAULT_MEMORY_POOL_MAX_MEDIUM_CHUNKS)
 , large_ (RDMA_DEFAULT_MEMORY_POOL_LARGE_CHUNK_SIZE,  RDMA_DEFAULT_MEMORY_POOL_MAX_LARGE_CHUNKS)
+, temp_regions(0)
 {
     LOG_DEBUG_MSG("small pool " << small_.chunk_size_ << " or " << small_.chunk_size_);
     auto alloc =
@@ -77,8 +78,9 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
         buffer = large_.pop();
     }
     else {
-        LOG_ERROR_MSG("Have not yet implemented monster chunk access " << hexnumber(length));
-        std::terminate();
+        buffer = AllocateTemporaryBlock(length);
+//        LOG_ERROR_MSG("Have not yet implemented monster chunk access " << hexnumber(length));
+//        std::terminate();
     }
 
     // initialize with some values for rare debugging issues
@@ -103,6 +105,17 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 //----------------------------------------------------------------------------
 void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
 {
+    // if this region was registered on the fly, then don't return it to the pool
+    if (region->isTempRegion() || region->isUserRegion()) {
+        if (region->isTempRegion()) {
+            temp_regions--;
+            LOG_TRACE_MSG("Deallocating temp registered block " << hexpointer(region->getAddress()) << decnumber(temp_regions));
+        }
+        LOG_DEBUG_MSG("Deleting " << hexpointer(region));
+        delete region;
+        return;
+    }
+
     // put the block back on the free list
     if (region->getLength()<=small_.chunk_size_) {
         small_.push(region);
@@ -120,8 +133,6 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
             << " free (s) "  << decnumber(small_.free_list_.size()) << " used " << decnumber(this->small_.region_use_count_)
             << " free (m) "  << decnumber(medium_.free_list_.size()) << " used " << decnumber(this->medium_.region_use_count_)
             << " free (l) "  << decnumber(large_.free_list_.size()) << " used " << decnumber(this->large_.region_use_count_));
-
-    LOG_TRACE_MSG("notify one called 1");
 }
 //----------------------------------------------------------------------------
 RdmaMemoryRegionPtr RdmaMemoryPool::AllocateRegisteredBlock(std::size_t length)
@@ -141,7 +152,8 @@ RdmaMemoryRegion* RdmaMemoryPool::AllocateTemporaryBlock(std::size_t length)
     RdmaMemoryRegion *region = new RdmaMemoryRegion();
     region->setTempRegion();
     region->allocate(protection_domain_, length);
-    LOG_TRACE_MSG("Allocating registered block " << hexpointer(region->getAddress()) << hexlength(length));
+    temp_regions++;
+    LOG_TRACE_MSG("Allocating temp registered block " << hexpointer(region->getAddress()) << hexlength(length) << decnumber(temp_regions));
     return region;
 }
 
