@@ -297,7 +297,9 @@ RdmaConnection::accept(void)
    struct rdma_conn_param param;
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
-   param.initiator_depth = 2;
+   param.initiator_depth     = 2;
+   param.rnr_retry_count     = 7;
+
    int err = rdma_accept(_cmId, &param);
    if (err != 0) {
       err = abs(err);
@@ -362,7 +364,8 @@ RdmaConnection::connect(void)
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
    param.initiator_depth = 2;
-   param.retry_count = 5;
+   param.retry_count = 7;
+   param.rnr_retry_count  = 7;
    int rc = rdma_connect(_cmId, &param);
    if (rc != 0) {
       int err = errno;
