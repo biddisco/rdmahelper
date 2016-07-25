@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 #ifndef RDMAHELPER_LOGGING_H_
@@ -72,8 +72,22 @@
 //
 #  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/runtime/threads/thread.hpp>
-#    define THREAD_ID "" << hpx::this_thread::get_id()
-#  else 
+
+     struct RdmaThreadPrintHelper {};
+
+     inline std::ostream& operator<<(std::ostream& os, const RdmaThreadPrintHelper&)
+     {
+         if (hpx::threads::get_self_id()==hpx::threads::invalid_thread_id) {
+             os << "--------------";
+         }
+         else {
+             os << hpx::this_thread::get_id();
+         }
+         return os;
+     }
+
+#    define THREAD_ID "" << RdmaThreadPrintHelper()
+#  else
 #    define THREAD_ID ""
 #  endif
 
@@ -123,8 +137,8 @@
           LOG_DEBUG_MSG(tmp.str()) \
         }
 
-#  define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__ << " ****************");
-#  define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__ << " ################");
+#  define FUNC_START_DEBUG_MSG LOG_DEBUG_MSG("**************** Enter " << __func__);
+#  define FUNC_END_DEBUG_MSG   LOG_DEBUG_MSG("################ Exit  " << __func__);
 
 
 #  define LOG_CIOS_DEBUG_MSG(x) LOG_DEBUG_MSG(x)
