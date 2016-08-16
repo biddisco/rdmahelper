@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -114,7 +114,7 @@ RdmaConnection::~RdmaConnection(void)
          rdma_destroy_qp(_cmId); // No return code
          LOG_CIOS_DEBUG_MSG(_tag << "destroyed queue pair");
       }
-      
+
       if (rdma_destroy_id(_cmId) == 0) {
          LOG_CIOS_DEBUG_MSG(_tag << "destroyed rdma cm id " << _cmId);
          _cmId = nullptr;
@@ -215,6 +215,7 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
 
    LOG_CIOS_DEBUG_MSG(_tag << "created queue pair " << decnumber(_cmId->qp->qp_num)
            << " max inline data is " << hexnumber(qpAttributes.cap.max_inline_data));
+
    return;
 }
 
@@ -296,7 +297,9 @@ RdmaConnection::accept(void)
    struct rdma_conn_param param;
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
-   param.initiator_depth = 2;
+   param.initiator_depth     = 2;
+   param.rnr_retry_count     = 7;
+
    int err = rdma_accept(_cmId, &param);
    if (err != 0) {
       err = abs(err);
@@ -361,7 +364,8 @@ RdmaConnection::connect(void)
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
    param.initiator_depth = 2;
-   param.retry_count = 5;
+   param.retry_count = 7;
+   param.rnr_retry_count  = 7;
    int rc = rdma_connect(_cmId, &param);
    if (rc != 0) {
       int err = errno;
@@ -492,9 +496,9 @@ RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmed
    send_wr.wr_id = (uint64_t)region;
 
    LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id)
-       << " with Length " << decnumber(send_sge.length) << " " << hexpointer(send_sge.addr));
+       << "with Length " << decnumber(send_sge.length) << hexpointer(send_sge.addr)
+       << "total send posted " << decnumber(++_totalSendPosted));
    // Post a send for outbound message.
-   ++_totalSendPosted;
 //   ++_waitingSendPosted;
    return postSendQ(&send_wr);
 }
@@ -532,10 +536,10 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    send_wr.wr_id = (uint64_t)region[0];
 
    LOG_TRACE_MSG(_tag << "Posted Send wr_id " << hexpointer(send_wr.wr_id) << hexpointer((uint64_t)region[1])
-       << " num SGE " << send_wr.num_sge
-       << " with Length " << decnumber(total_length) << " " << hexpointer(send_sge[0].addr) << " ...");
+       << "num SGE " << decnumber(send_wr.num_sge)
+       << "with Length " << decnumber(total_length) << hexpointer(send_sge[0].addr)
+       << "total send posted " << decnumber(++_totalSendPosted));
    // Post a send for outbound message.
-   ++_totalSendPosted;
 //   ++_waitingSendPosted;
    return postSendQ(&send_wr);
 }
@@ -568,9 +572,9 @@ uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bo
     send_wr.wr_id = (uint64_t)region;
 
     LOG_TRACE_MSG(_tag << "Posted Zero byte Send wr_id " << hexpointer(send_wr.wr_id)
-        << " with Length " << decnumber(send_sge.length)
-        << " address " << hexpointer(send_sge.addr)
-        << " total send posted " << ++_totalSendPosted);
+        << "with Length " << decnumber(send_sge.length)
+        << "address " << hexpointer(send_sge.addr)
+        << "total send posted " << decnumber(++_totalSendPosted));
  //   ++_waitingSendPosted;
     return postSendQ(&send_wr);
 }
@@ -722,7 +726,7 @@ RdmaConnection::waitForEvent(void)
    if (err != 0) {
       LOG_ERROR_MSG(_tag << "error getting rdma cm event: " << RdmaError::errorString(err));
       return err;
-   } 
+   }
    //LOG_INFO_MSG_FORCED(_tag << rdma_event_str(_event->event) << " (" << _event->event << ") is available for rdma cm id " << _event->id);
    CIOSLOGEVT_CH(BGV_RECV_EVT,_event);
    return 0;

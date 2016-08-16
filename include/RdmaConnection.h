@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,7 +33,7 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaConnection.h 
+//! \file  RdmaConnection.h
 //! \brief Declaration and inline methods for bgcios::RdmaConnection class.
 
 #ifndef COMMON_RDMACONNECTION_H
@@ -54,6 +54,7 @@
 #include <memory>
 #include <iostream>
 #include <iomanip>
+#include <atomic>
 
 namespace bgcios
 {
@@ -282,15 +283,15 @@ postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=fals
    recv_wr.sg_list = &recv_sge;
    recv_wr.num_sge = 1;
    recv_wr.wr_id   = (uint64_t)region;
-   ++_totalRecvPosted;
-   struct ibv_recv_wr *badRequest;
+  struct ibv_recv_wr *badRequest;
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
    if (err!=0) {
      throw(RdmaError(err, "postSendNoImmed failed"));
    }
    LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << hexpointer(recv_wr.wr_id)
-       << " with Length " << hexlength(length));
-   return recv_wr.wr_id;
+       << " with Length " << hexlength(length)
+       << " total recv posted " << decnumber(++_totalRecvPosted));
+    return recv_wr.wr_id;
 }
 
 /*
@@ -392,9 +393,9 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
 
 /*
 int
-postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr, 
+postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
                                              uint32_t localKey,  uint64_t localAddr,
-                                             ssize_t length, 
+                                             ssize_t length,
                                              RdmaMemoryRegionPtr regionSend, void *addressSend, uint64_t lengthSend)
 {
    // Build scatter/gather element for inbound message.
@@ -407,7 +408,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    // Build a send work request.
    struct ibv_send_wr send_wr;
    memset(&send_wr, 0, sizeof(send_wr));
-   
+
    send_wr.sg_list = &read_sge;
    send_wr.num_sge = 1;
    send_wr.opcode = IBV_WR_RDMA_WRITE;
@@ -434,7 +435,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    send_wr2.opcode = IBV_WR_SEND;
    send_wr2.wr_id = regionSend->getLocalKey(); // So memory region is available in work completion.
    send_wr2.send_flags = IBV_SEND_FENCE;//Always wait for the preceding operation (like in RDMA putdata to compute node not signaled)
-   
+
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
    CIOSLOGPOSTSEND(BGV_POST_WRR,send_wr,err);
    CIOSLOGPOSTSEND(BGV_POST_SND,send_wr2,err);
@@ -503,7 +504,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    //! \brief  Get the local port for the connection.
    //! \return Port number.
 
-   in_port_t getLocalPort(void) { 
+   in_port_t getLocalPort(void) {
       if (_localAddress.sin_port==0){
          _localAddress.sin_port=rdma_get_src_port(_cmId);
       }
@@ -658,16 +659,16 @@ protected:
    struct sockaddr_in _remoteAddress;
 
    //! Total number of receive operations posted to queue pair.
-   uint64_t _totalRecvPosted;
+   std::atomic<uint64_t> _totalRecvPosted;
 
    //! Total number of send operations posted to queue pair.
-   uint64_t _totalSendPosted;
+   std::atomic<uint64_t> _totalSendPosted;
 
    //! Total number of rdma read operations posted to queue pair.
-   uint64_t _totalReadPosted;
+   std::atomic<uint64_t> _totalReadPosted;
 
    //! Total number of rdma write operations posted to queue pair.
-   uint64_t _totalWritePosted;
+   std::atomic<uint64_t> _totalWritePosted;
 
    //! if the client connected to the server, then set this flag so that
    //! at shutdown, we use the correct flag for disconnect(mode)
