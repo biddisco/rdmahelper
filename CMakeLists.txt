@@ -34,6 +34,10 @@ if (RDMAHELPER_WITH_LOGGING)
   endif()
 endif()
 
+if (HPX_WITH_PARCELPORT_VERBS)
+  add_config_define(RDMAHELPER_HAVE_HPX)
+endif()
+
 #------------------------------------------------------------------------------
 # Detect Platform to setup special flags for specific machines
 #------------------------------------------------------------------------------
