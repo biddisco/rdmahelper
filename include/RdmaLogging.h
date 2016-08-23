@@ -24,10 +24,10 @@
 //
 // useful macros for formatting messages
 //
-#define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(p) << " "
-#define hexuint32(p)  "0x" << std::setfill('0') << std::setw( 8) << std::hex << (uint32_t)(p) << " "
-#define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::hex << (uintptr_t)(p) << " "
-#define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::hex << p << " "
+#define hexpointer(p) "0x" << std::setfill('0') << std::setw(12) << std::noshowbase << std::hex << (uintptr_t)(p) << " "
+#define hexuint32(p)  "0x" << std::setfill('0') << std::setw( 8) << std::noshowbase << std::hex << (uint32_t)(p) << " "
+#define hexlength(p)  "0x" << std::setfill('0') << std::setw( 6) << std::noshowbase << std::hex << (uintptr_t)(p) << " "
+#define hexnumber(p)  "0x" << std::setfill('0') << std::setw( 4) << std::noshowbase << std::hex << p << " "
 #define decnumber(p)  "" << std::dec << p << " "
 #define ipaddress(p)  "" << std::dec << (int) ((uint8_t*) &p)[0] << "." << (int) ((uint8_t*) &p)[1] << \
     "." << (int) ((uint8_t*) &p)[2] << "." << (int) ((uint8_t*) &p)[3] << " "
@@ -72,17 +72,20 @@
 //
 #  ifdef RDMAHELPER_HAVE_HPX
 #    include <hpx/runtime/threads/thread.hpp>
+#    include <thread>
 
      struct RdmaThreadPrintHelper {};
 
      inline std::ostream& operator<<(std::ostream& os, const RdmaThreadPrintHelper&)
      {
          if (hpx::threads::get_self_id()==hpx::threads::invalid_thread_id) {
-             os << "--------------";
+             os << "-------------- ";
          }
          else {
-             os << hpx::this_thread::get_id();
+             hpx::threads::thread_data *dummy = hpx::this_thread::get_id().native_handle().get();
+             os << hexpointer(dummy);
          }
+         os << "0x" << std::setfill('0') << std::setw(12) << std::noshowbase << std::hex << std::this_thread::get_id();
          return os;
      }
 
