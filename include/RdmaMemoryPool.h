@@ -46,9 +46,10 @@
 #include "RdmaLogging.h"
 
 // the default memory chunk size in bytes
-#define RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE   4096
-#define RDMA_DEFAULT_MEMORY_POOL_MEDIUM_CHUNK_SIZE 16384
-#define RDMA_DEFAULT_MEMORY_POOL_LARGE_CHUNK_SIZE  1048576
+#define RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE  0x001000 // 4KB
+#define RDMA_DEFAULT_MEMORY_POOL_MEDIUM_CHUNK_SIZE 0x004000 // 16KB
+#define RDMA_DEFAULT_MEMORY_POOL_LARGE_CHUNK_SIZE  0x100000 // 1MB
+
 // the default number of chunks we allocate with our pool
 #define RDMA_DEFAULT_CHUNKS_ALLOC 32
 // the maximum number of chunks we can allocate with our pool
@@ -124,10 +125,10 @@ struct pool_container
 {
     typedef std::function<RdmaMemoryRegionPtr(std::size_t)> regionAllocFunction;
 #ifdef RDMAHELPER_HAVE_HPX
-    typedef hpx::lcos::local::spinlock                   mutex_type;
+    typedef hpx::lcos::local::spinlock                mutex_type;
     typedef std::lock_guard<mutex_type>               scoped_lock;
     typedef std::unique_lock<mutex_type>              unique_lock;
-    typedef hpx::lcos::local::condition_variable_any      condition_type;
+    typedef hpx::lcos::local::condition_variable_any  condition_type;
 #else
     typedef std::mutex                    mutex_type;
     typedef std::lock_guard<std::mutex>   scoped_lock;
@@ -206,6 +207,7 @@ struct pool_container
         lock1.unlock();
         // if anyone was waiting on the free list lock, then give it
         memBuffer_cond_.notify_one();
+        LOG_DEBUG_MSG("memBuffer_cond_ notified one");
     }
 
     RdmaMemoryRegion *pop()
@@ -217,6 +219,7 @@ struct pool_container
             //  AllocateRegisteredBlock(length);
         }
         // make sure the list is not empty, wait on condition
+        LOG_TRACE_MSG("Waiting to pop block");
         memBuffer_cond_.wait(lock1, [this] {
             return !free_list_.empty();
         });
