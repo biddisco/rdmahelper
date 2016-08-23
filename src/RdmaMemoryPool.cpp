@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 #include "RdmaLogging.h"
@@ -64,6 +64,21 @@ char *RdmaMemoryPool::allocate(size_t length)
 }
 
 //----------------------------------------------------------------------------
+bool RdmaMemoryPool::canAllocateRegionUnsafe(size_t length)
+{
+    if (length<=small_.chunk_size_) {
+        return !small_.free_list_.empty();
+    }
+    else if (length<=medium_.chunk_size_) {
+        return !medium_.free_list_.empty();
+    }
+    else if (length<=large_.chunk_size_) {
+        return !large_.free_list_.empty();
+    }
+    return true;
+}
+
+//----------------------------------------------------------------------------
 RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 {
     RdmaMemoryRegion *buffer;
@@ -111,7 +126,7 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
             temp_regions--;
             LOG_TRACE_MSG("Deallocating temp registered block " << hexpointer(region->getAddress()) << decnumber(temp_regions));
         }
-        LOG_DEBUG_MSG("Deleting " << hexpointer(region));
+        LOG_DEBUG_MSG("Deleting (user region) " << hexpointer(region));
         delete region;
         return;
     }

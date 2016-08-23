@@ -299,6 +299,8 @@ struct RdmaMemoryPool : boost::noncopyable
     // should be used in preference to the std:: compatible
     // versions using char* for efficiency
 
+    bool canAllocateRegionUnsafe(size_t length);
+
     // allocate a region, if size=0 a small region is returned
     RdmaMemoryRegion *allocateRegion(size_t size);
 
