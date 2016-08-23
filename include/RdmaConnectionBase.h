@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 //
@@ -64,9 +64,13 @@ public:
     void refill_preposts(unsigned int preposts) {
         LOG_DEBUG_MSG("Entering refill size of waiting receives is " << decnumber(_waitingReceives));
         while (this->getNumReceives()<preposts) {
-            LOG_DEBUG_MSG("Pre-Posting a receive to client size " << this->_memoryPool->small_.chunk_size_);
-            RdmaMemoryRegion *region = this->getFreeRegion(this->_memoryPool->small_.chunk_size_);
-            this->postRecvRegionAsID(region, region->getLength(), false);
+            // if the pool has spare small blocks (just use 0 size) then
+            // refill the queues, but don't wait, just abort if none are available
+            if (this->_memoryPool->canAllocateRegionUnsafe(0)) {
+                LOG_DEBUG_MSG("Pre-Posting a receive to client size " << this->_memoryPool->small_.chunk_size_);
+                RdmaMemoryRegion *region = this->getFreeRegion(this->_memoryPool->small_.chunk_size_);
+                this->postRecvRegionAsID(region, region->getLength(), false);
+            }
         }
     }
 
