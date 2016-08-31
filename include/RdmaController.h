@@ -30,6 +30,9 @@
 #include "rdmahelper_defines.h"
 #include "RdmaLogging.h"
 //
+#include <hpx/lcos/local/shared_mutex.hpp>
+#include <plugins/parcelport/verbs/unordered_map.hpp>
+//
 #include <RdmaCompletionChannel.h>
 #include <RdmaClient.h>
 #include <RdmaServer.h>
@@ -54,7 +57,6 @@ public:
 
 #ifdef RDMAHELPER_HAVE_HPX
     typedef hpx::lcos::local::spinlock               mutex_type;
-//    typedef hpx::lcos::local::mutex                  mutex_type;
     typedef std::unique_lock<mutex_type>             unique_lock;
     typedef hpx::lcos::local::condition_variable_any condition_type;
 #else
@@ -173,7 +175,9 @@ private:
     bgcios::RdmaCompletionChannelPtr _completionChannel;
 
     //! Map of all active clients indexed by queue pair number.
-    std::map<uint32_t, RdmaClientPtr> _clients;
+    hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr> _clients;
+    typedef hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr>::map_read_lock_type
+        map_read_lock_type;
 
     //! Large memory region for transferring data (used for both inbound and outbound data).
     bgcios::RdmaMemoryRegionPtr _largeRegion;

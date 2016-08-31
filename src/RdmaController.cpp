@@ -209,18 +209,20 @@ void RdmaController::freeRegion(RdmaMemoryRegion *region) {
 
 /*---------------------------------------------------------------------------*/
 void RdmaController::refill_client_receives() {
-  // make sure all clients have a pre-posted receive in their queues
-  std::for_each(_clients.begin(), _clients.end(), [](RdmaController::ClientMapPair _client) {
-    _client.second->refill_preposts(RDMA_MAX_PREPOSTS);
-  });
+    // make sure all clients have a pre-posted receive in their queues
+    map_read_lock_type read_lock(_clients.read_write_mutex());
+    //
+    std::for_each(_clients.begin(), _clients.end(), [](RdmaController::ClientMapPair _client) {
+        _client.second->refill_preposts(RDMA_MAX_PREPOSTS);
+    });
 }
 
 /*---------------------------------------------------------------------------*/
 int RdmaController::pollCompletionQueues()
 {
-//    LOG_DEBUG_MSG("pollCompletionQueues");
-    //
     int ntot = 0, nc = 0;
+    //
+    map_read_lock_type read_lock(_clients.read_write_mutex());
     //
     for (auto _client : _clients) {
         // avoid using smartpointers to save atomic ops
@@ -336,8 +338,9 @@ void RdmaController::eventChannelHandler(void)
     }
 
     LOG_DEBUG_MSG("adding a new client with qpnum " << client->getQpNum());
+
     // Add new client to map of active clients.
-    _clients[client->getQpNum()] = client;
+    _clients.insert(std::pair<uint32_t, RdmaClientPtr>(client->getQpNum(), client));
 
     // Add completion queue to completion channel.
 //    _completionChannel->addCompletionQ(completionQ);
@@ -503,7 +506,7 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   newClient->makePeer(_protectionDomain, completionQ);
 
   // Add new client to map of active clients.
-  _clients[newClient->getQpNum()] = newClient;
+  _clients.insert(std::pair<uint32_t, RdmaClientPtr>(newClient->getQpNum(), newClient));
 
   // Add completion queue to completion channel.
 //  _completionChannel->addCompletionQ(completionQ);
@@ -555,7 +558,7 @@ void RdmaController::removeAllInitiatedConnections()
                 return c.second->getInitiatedConnection();
             })>0)
     {
-        std::map<uint32_t, RdmaClientPtr>::iterator c = _clients.begin();
+        hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr>::iterator c = _clients.begin();
         while (c != _clients.end()) {
             if (c->second->getInitiatedConnection()) {
                 LOG_DEBUG_MSG("Removing a connection");
