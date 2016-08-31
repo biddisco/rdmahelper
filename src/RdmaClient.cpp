@@ -128,7 +128,7 @@ RdmaClient::makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr comp
       createQp(domain, completionQ, completionQ, 1, false);
    }
    catch (RdmaError& e) {
-      LOG_ERROR_MSG(_tag << "error creating queue pair: " << RdmaError::errorString(e.errcode()));
+      LOG_ERROR_MSG(_tag << "makePeer error creating queue pair: " << RdmaError::errorString(e.errcode()));
       return e.errcode();
    }
 

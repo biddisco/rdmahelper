@@ -46,6 +46,15 @@
 #include <arpa/inet.h>
 
 #include "rdma_messages.h"
+#include <plugins/parcelport/verbs/rdmahandler/event_channel.hpp>
+
+namespace hpx {
+namespace parcelset {
+namespace policies {
+namespace verbs
+{
+    event_channel::mutex_type event_channel::_event_mutex;
+}}}}
 
 using namespace bgcios;
 
@@ -241,47 +250,12 @@ int RdmaController::pollCompletionQueues()
 /*---------------------------------------------------------------------------*/
 int RdmaController::pollEventChannel()
 {
-    // there is no need for more than one thread to poll the event channel
-    // so try the lock and if someone has it, leave immediately
-    unique_lock lock(_event_mutex, std::try_to_lock);
-    if (!lock.owns_lock()) {
-        return 0;
-    }
-
-    const int eventChannel = 0;
-    const int numFds = 1;
-    //
-    pollfd pollInfo[numFds];
-    int polltimeout = 0; // seconds*1000; // 10000 == 10 sec
-
-    pollInfo[eventChannel].fd = _rdmaListener->getEventChannelFd();
-    pollInfo[eventChannel].events = POLLIN;
-    pollInfo[eventChannel].revents = 0;
-
-    // Wait for an event on one of the descriptors.
-    int rc = poll(pollInfo, numFds, polltimeout);
-
-    // If there were no events/messages
-    if (rc == 0) {
-        return 0;
-    }
-
-    // There was an error so log the failure and try again.
-    if (rc == -1) {
-        int err = errno;
-        if (err == EINTR) {
-            LOG_CIOS_TRACE_MSG("poll returned EINTR, continuing ...");
-            return 0;
-        }
-        LOG_ERROR_MSG("error polling socket descriptors: " << RdmaError::errorString(err));
-        return 0;
-    }
-
-    if (pollInfo[eventChannel].revents & POLLIN) {
-        LOG_CIOS_TRACE_MSG("input event available on event channel");
-        eventChannelHandler();
-    }
-    return 1;
+    return hpx::parcelset::policies::verbs::event_channel::
+        poll_event_channel(_rdmaListener->getEventChannelFd(),
+            [this](){
+                this->eventChannelHandler();
+            }
+        );
 }
 /*---------------------------------------------------------------------------*/
 int RdmaController::eventMonitor(int Nevents)
@@ -295,11 +269,10 @@ int RdmaController::eventMonitor(int Nevents)
 }
 
 /*---------------------------------------------------------------------------*/
-void RdmaController::eventChannelHandler(void) {
-  int err;
-
+void RdmaController::eventChannelHandler(void)
+{
   // Wait for the event (it should be here now).
-  err = _rdmaListener->waitForEvent();
+  int err = _rdmaListener->waitForEvent();
 
   if (err != 0) {
     return;
@@ -316,10 +289,25 @@ void RdmaController::eventChannelHandler(void) {
     // prevent
     //
     if (this->_preConnectionFunction) {
-        LOG_DEBUG_MSG("calling connection callback ");
+        struct sockaddr *ip_src = &_rdmaListener->getEventId()->route.addr.src_addr;
+        struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
+        //
+        struct sockaddr *ip_dst = &_rdmaListener->getEventId()->route.addr.dst_addr;
+        struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
+        //
+        std::string ip_dsts = inet_ntoa(addr_dst->sin_addr);
+        std::string ip_srcs = inet_ntoa(addr_src->sin_addr);
+        //
+        LOG_DEBUG_MSG("calling connection callback for IP " << ip_dsts.c_str() << " " << ip_srcs.c_str());
+        //
+        char ip1[4], ip2[4];
+        memcpy(ip1, &addr_dst->sin_addr, 4);
+        memcpy(ip2, &addr_src->sin_addr, 4);
+        //
+        LOG_DEBUG_MSG("Address source " << ipaddress(ip1) << " Address dst " << ipaddress(ip2));
         if (!this->_preConnectionFunction()) {
             LOG_ERROR_MSG("We are already accepting a connection, so reject");
-            _rdmaListener->reject();
+            _rdmaListener->reject(_rdmaListener->getEventId());
         }
     }
 
@@ -362,7 +350,7 @@ void RdmaController::eventChannelHandler(void) {
       printf("error accepting client connection: %s\n", RdmaError::errorString(err));
       _clients.erase(client->getQpNum());
 //      _completionChannel->removeCompletionQ(completionQ);
-      client->reject(); // Tell client the bad news
+      client->reject(_rdmaListener->getEventId()); // Tell client the bad news
       client.reset();
       completionQ.reset();
       break;

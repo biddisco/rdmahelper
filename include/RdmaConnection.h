@@ -55,6 +55,8 @@
 #include <iostream>
 #include <iomanip>
 #include <atomic>
+//
+#include <plugins/parcelport/verbs/rdmahandler/event_channel.hpp>
 
 namespace bgcios
 {
@@ -106,7 +108,7 @@ public:
    //! \brief  Reject a connection on the rdma connection management id.
    //! \return 0 when successful, errno when unsuccessful.
 
-   int reject(void);
+   int reject(struct rdma_cm_id *cmid);
 
    //! \brief  Resolve remote address and optional local address from IP addresses to rdma addresses.
    //! \param  localAddr Local IPv4 address of this client (can be NULL).
@@ -114,7 +116,7 @@ public:
    //! \return Nothing.
    //! \throws RdmaError.
 
-   void resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in *remoteAddr);
+   int resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in *remoteAddr);
 
    //! \brief  Resolve a route to the server at the remote address.
    //! \return 0 when successful, errno when unsuccessful.
@@ -283,7 +285,7 @@ postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=fals
    recv_wr.sg_list = &recv_sge;
    recv_wr.num_sge = 1;
    recv_wr.wr_id   = (uint64_t)region;
-  struct ibv_recv_wr *badRequest;
+   struct ibv_recv_wr *badRequest;
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
    if (err!=0) {
      throw(RdmaError(err, "postSendNoImmed failed"));

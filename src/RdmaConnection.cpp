@@ -219,7 +219,7 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
    return;
 }
 
-void
+int
 RdmaConnection::resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in *remoteAddr)
 {
    // Resolve the addresses.
@@ -237,27 +237,12 @@ RdmaConnection::resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in
    }
 
    // Wait for ADDR_RESOLVED event.
-   int err = waitForEvent();
-   if (err != 0) {
-      RdmaError e(err, "waiting for ADDR_RESOVLED event failed");
-      throw e;
-   }
-   if (_event->event != RDMA_CM_EVENT_ADDR_RESOLVED) {
-      LOG_ERROR_MSG(_tag << "event " << rdma_event_str(_event->event) << " is not " << rdma_event_str(RDMA_CM_EVENT_ADDR_RESOLVED));
-      RdmaError e(EINVAL);
-      throw e;
-   }
+   int err = hpx::parcelset::policies::verbs::event_channel::get_event(_eventChannel,
+       RDMA_CM_EVENT_ADDR_RESOLVED, _event);
 
-   // Acknowledge the ADDR_RESOLVED event.
-   err = ackEvent();
-   if (err != 0) {
-      LOG_ERROR_MSG(_tag << "error acking " << rdma_event_str(_event->event) << ": " << RdmaError::errorString(err));
-      RdmaError e(err, "acknowledge ADDR_RESOLVED event failed");
-      throw e;
-   }
-   LOG_CIOS_DEBUG_MSG(_tag << "resolved to address " << addressToString(&_remoteAddress));
+   LOG_DEBUG_MSG(_tag << "resolved to address " << addressToString(&_remoteAddress));
 
-   return;
+   return err;
 }
 
 int
@@ -297,12 +282,12 @@ RdmaConnection::accept(void)
    struct rdma_conn_param param;
    memset(&param, 0, sizeof(param));
    param.responder_resources = 1;
-   param.initiator_depth     = 2;
+   param.initiator_depth     = 1;
    param.rnr_retry_count     = 7;
 
-   int err = rdma_accept(_cmId, &param);
-   if (err != 0) {
-      err = abs(err);
+   int rc = rdma_accept(_cmId, &param);
+   if (rc != 0) {
+      int err = errno;
       LOG_ERROR_MSG(_tag << "error accepting connection: " << RdmaError::errorString(err));
       return err;
    }
@@ -312,12 +297,13 @@ RdmaConnection::accept(void)
 }
 
 int
-RdmaConnection::reject(void)
+RdmaConnection::reject(struct rdma_cm_id *cmid)
 {
    // Reject a connection request.
-   int err = rdma_reject(_cmId, nullptr, 0);
-   if (err != 0) {
-      LOG_ERROR_MSG(_tag << "error rejecting connection from new client");
+   int rc = rdma_reject(cmid, 0, 0);
+   if (rc != 0) {
+      int err = errno;
+      LOG_ERROR_MSG(_tag << "error rejecting connection on cmid " << hexpointer(cmid) << RdmaError::errorString(err));
       return err;
    }
 
@@ -336,24 +322,13 @@ RdmaConnection::resolveRoute(void)
       return err;
    }
 
-   // Wait for ROUTE_RESOLVED event.
-   int err = waitForEvent();
-   if (err != 0) {
-      return err;
-   }
-   if (_event->event != RDMA_CM_EVENT_ROUTE_RESOLVED) {
-      LOG_ERROR_MSG(_tag << "event " << rdma_event_str(_event->event) << " is not " << rdma_event_str(RDMA_CM_EVENT_ROUTE_RESOLVED));
-      return EINVAL;
-   }
+   // Wait for ADDR_RESOLVED event.
+   int err = hpx::parcelset::policies::verbs::event_channel::get_event(_eventChannel,
+       RDMA_CM_EVENT_ROUTE_RESOLVED, _event);
 
-   // Acknowledge the ROUTE_RESOLVED event.
-   err = ackEvent();
-   if (err != 0) {
-      return err;
-   }
-   LOG_CIOS_DEBUG_MSG(_tag << "resolved route to " << addressToString(&_remoteAddress));
+   LOG_DEBUG_MSG(_tag << "resolved route to " << addressToString(&_remoteAddress));
 
-   return 0;
+   return err;
 }
 
 int
@@ -372,14 +347,20 @@ RdmaConnection::connect(void)
       LOG_ERROR_MSG(_tag << "error connecting to " << addressToString(&_remoteAddress) << ": " << RdmaError::errorString(err));
       return err;
    }
+   using namespace hpx::parcelset::policies::verbs;
+   while (event_channel::poll_event_channel(_eventChannel->fd, [](){})==0)
+   {
+//       LOG_TRACE_MSG("Do a background check in here");
+//       std::cout << "Do a background check in here" << std::endl;
+   }
 
    // Wait for ESTABLISHED event.
-   int err = waitForEvent();
-   if (err != 0) {
+   int err = hpx::parcelset::policies::verbs::event_channel::get_event(_eventChannel,
+       RDMA_CM_EVENT_ESTABLISHED, _event);
+   if (err != 0 && _event == NULL) {
       return err;
    }
-   if (_event->event != RDMA_CM_EVENT_ESTABLISHED) {
-      LOG_ERROR_MSG(_tag << "event " << rdma_event_str(_event->event) << " is not " << rdma_event_str(RDMA_CM_EVENT_ESTABLISHED));
+   else if (err != 0 && _event->event != RDMA_CM_EVENT_ESTABLISHED) {
       /* valid REJ from consumer will always contain private data */
       if (_event->status == 28 &&
           _event->param.conn.private_data_len) {
@@ -393,12 +374,6 @@ RdmaConnection::connect(void)
           );
       }
       return _event->status;
-   }
-
-   // Acknowledge the ESTABLISHED event.
-   err = ackEvent();
-   if (err != 0) {
-      return err;
    }
 
    LOG_CIOS_DEBUG_MSG(_tag << "connected to " << addressToString(&_remoteAddress));
@@ -721,13 +696,12 @@ RdmaConnection::waitForEvent(void)
 {
    // This operation can block if there are no pending events available.
    LOG_CIOS_TRACE_MSG(_tag << "waiting for rdma cm event on event channel with fd " << hexnumber(_eventChannel->fd) << " ...");
-   //LOG_INFO_MSG_FORCED(_tag << "waiting for rdma cm event on event channel with fd " << _eventChannel->fd << " ...");
-   int err = rdma_get_cm_event(_eventChannel, &_event);
-   if (err != 0) {
+   int rc = rdma_get_cm_event(_eventChannel, &_event);
+   if (rc != 0) {
+      int err = errno;
       LOG_ERROR_MSG(_tag << "error getting rdma cm event: " << RdmaError::errorString(err));
       return err;
    }
-   //LOG_INFO_MSG_FORCED(_tag << rdma_event_str(_event->event) << " (" << _event->event << ") is available for rdma cm id " << _event->id);
    CIOSLOGEVT_CH(BGV_RECV_EVT,_event);
    return 0;
 }
