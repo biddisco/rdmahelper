@@ -290,26 +290,33 @@ void RdmaController::eventChannelHandler(void)
     //
     // prevent
     //
-    if (this->_preConnectionFunction) {
+    if (this->_connectRequestFunction) {
         struct sockaddr *ip_src = &_rdmaListener->getEventId()->route.addr.src_addr;
         struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
         //
         struct sockaddr *ip_dst = &_rdmaListener->getEventId()->route.addr.dst_addr;
         struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
         //
-        std::string ip_dsts = inet_ntoa(addr_dst->sin_addr);
         std::string ip_srcs = inet_ntoa(addr_src->sin_addr);
-        //
-        LOG_DEBUG_MSG("calling connection callback for IP " << ip_dsts.c_str() << " " << ip_srcs.c_str());
+        std::string ip_dsts = inet_ntoa(addr_dst->sin_addr);
         //
         char ip1[4], ip2[4];
         memcpy(ip1, &addr_dst->sin_addr, 4);
         memcpy(ip2, &addr_src->sin_addr, 4);
+
         //
-        LOG_DEBUG_MSG("Address source " << ipaddress(ip1) << " Address dst " << ipaddress(ip2));
-        if (!this->_preConnectionFunction()) {
-            LOG_ERROR_MSG("We are already accepting a connection, so reject");
+        // The src and dest fields refer to the message and not the connect request
+        // so we are actually receiving a request from dest (it is the src of the msg)
+        //
+        LOG_ERROR_MSG("Connection request, callback from "
+            << ipaddress(addr_dst->sin_addr.s_addr) << "to "
+            << ipaddress(addr_src->sin_addr.s_addr)
+            << "we are " << ipaddress(_localAddr));
+        //
+        if (!this->_connectRequestFunction(addr_dst, addr_src)) {
+            LOG_ERROR_MSG("Connect request callback rejected (already connecting?)");
             _rdmaListener->reject(_rdmaListener->getEventId());
+            return;
         }
     }
 
@@ -483,6 +490,9 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   std::string remoteAddr = inet_ntoa(*(struct in_addr*)(&remote_ip));
   std::string remotePort = boost::lexical_cast<std::string>(remote_port);
 
+  LOG_ERROR_MSG("makeServerToServerConnection from "
+      << ipaddress(_localAddr)
+      << "to " << ipaddress(remote_ip));
   RdmaCompletionQueuePtr completionQ;
   try {
 //    completionQ = std::make_shared < RdmaCompletionQueue >
@@ -500,10 +510,19 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   } catch (bgcios::RdmaError& e) {
     LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
     completionQ.reset();
+    return NULL;
   }
 
   // make a connection
-  newClient->makePeer(_protectionDomain, completionQ);
+  if (newClient->makePeer(_protectionDomain, completionQ)!=0) {
+      LOG_DEBUG_MSG("makePeer failed in makeServerToServerConnection from "
+          << ipaddress(_localAddr)
+          << "to " << ipaddress(remote_ip));
+      LOG_ERROR_MSG("Reset completion Q");
+      completionQ.reset();
+      LOG_ERROR_MSG("returning NULL ");
+      return NULL;
+  }
 
   // Add new client to map of active clients.
   _clients.insert(std::pair<uint32_t, RdmaClientPtr>(newClient->getQpNum(), newClient));

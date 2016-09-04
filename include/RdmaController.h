@@ -84,12 +84,12 @@ public:
 
     typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
     typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
-    typedef std::function<int()> PreConnectionFunction;
+    typedef std::function<int(struct sockaddr_in *, struct sockaddr_in *)> ConnectRequestFunction;
 
     // Set a callback which will be called immediately after
     // RDMA_CM_EVENT_CONNECT_REQUEST has been received. This can be useful to
     // prevent two connections being established at the same time.
-    void setPreConnectionFunction(PreConnectionFunction f) { this->_preConnectionFunction = f;}
+    void setConnectRequestFunction(ConnectRequestFunction f) { this->_connectRequestFunction = f;}
 
     // Set a callback which will be called immediately after
     // RDMA_CM_EVENT_ESTABLISHED has been received.
@@ -161,7 +161,7 @@ private:
     std::atomic<uint32_t> event_poll_count;
 
     CompletionFunction       _completionFunction;
-    PreConnectionFunction    _preConnectionFunction;
+    ConnectRequestFunction   _connectRequestFunction;
     ConnectionFunction       _connectionFunction;
     DisconnectionFunction    _disconnectionFunction;
 
