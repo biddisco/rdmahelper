@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,58 +33,59 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaProtectionDomain.cc
-//! \brief Methods for bgcios::RdmaProtectionDomain class.
+//! \file  rdma_error.h
+//! \brief Declaration and inline methods for rdma_error class.
+
+#ifndef COMMON_RDMAERROR_H
+#define COMMON_RDMAERROR_H
 
 // Includes
-#include <RdmaProtectionDomain.h>
-#include <RdmaError.h>
-#include "RdmaLogging.h"
-#include <errno.h>
+#include <stdexcept>
+#include <string.h>
 
-using namespace bgcios;
+namespace hpx {
+namespace parcelset {
+namespace policies {
+namespace verbs {
 
-LOG_DECLARE_FILE("cios.common");
+//! Exception for general RDMA errors.
 
-
-RdmaProtectionDomain::RdmaProtectionDomain(struct ibv_context *context)
+class rdma_error : public std::runtime_error
 {
-   // Validate context pointer (since ibv_ functions won't check it).
-   if (context == NULL) {
-      RdmaError e(EFAULT, "device context pointer is null");
-      LOG_ERROR_MSG("error with context pointer " << context << " when constructing protection domain");
-      throw e;
+public:
+
+   //! \brief  Default constructor.
+   //! \param  err Error code value.
+   //! \param  what String describing error.
+
+   rdma_error(int err=0, const std::string what="") : std::runtime_error(what), _errcode(err) { }
+
+   int errcode(void) const { return _errcode; }
+
+   //! \brief  Return a string describing an errno value.
+   //! \param  error Errno value.
+   //! \return Pointer to string describing errno value.
+   //! Warning : strerror_r is differnt under posix/gnu
+   //! mac version returns int, others char*
+   static inline char *error_string(int error)
+   {
+   #if !defined(_GNU_SOURCE) || defined(__APPLE__)
+      char buf[256];
+      if (strerror_r (error, buf, sizeof buf)==0) return buf;
+      else return NULL;
+   #else
+      char errorBuffer[256];
+      return strerror_r(error, errorBuffer, sizeof(errorBuffer));
+   #endif
    }
 
-   // Allocate a protection domain.
-   _protectionDomain = ibv_alloc_pd(context);
-   if (_protectionDomain == NULL) {
-      RdmaError e(ENOMEM, "ibv_alloc_pd() failed");
-      LOG_ERROR_MSG("error allocating protection domain");
-      throw e;
-   }
-   LOG_CIOS_DEBUG_MSG("allocated protection domain " << _protectionDomain->handle);
-}
+protected:
 
-RdmaProtectionDomain::~RdmaProtectionDomain()
-{
-   if (_protectionDomain != NULL) {
-      uint32_t handle = _protectionDomain->handle;
-      int err = ibv_dealloc_pd(_protectionDomain);
-      if (err == 0) {
-         _protectionDomain = NULL;
-         LOG_CIOS_DEBUG_MSG("deallocated protection domain " << handle);
-      }
-      else {
-         LOG_ERROR_MSG("error deallocating protection domain " << handle << ": " <<  RdmaError::errorString(err));
-      }
-   }
-}
+   //! Error code (typically errno from RDMA function).
+   int _errcode;
+};
 
-std::ostream&
-RdmaProtectionDomain::writeTo(std::ostream& os) const
-{
-   os << "context=" << _protectionDomain->context << " handle=" << _protectionDomain->handle;
-   return os;
-}
+}}}} // namespace bgcios
+
+#endif // COMMON_RDMAERROR_H
 

@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -59,7 +59,7 @@ public:
    //! \param  context InfiniBand device context.
    //! \param  qSize Minimum number of entries in completion queue.
    //! \param  completionChannel Pointer to completion channel for event notification (can be NULL).
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaCompletionQueue(ibv_context *context, int qSize, ibv_comp_channel *completionChannel);
 
@@ -79,20 +79,20 @@ public:
 
    //! \brief  Request notification events on completion channel when completion queue entry is placed on queue.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    void requestEvent(void);
 
    //! \brief  Acknowledge all outstanding notification events on completion queue.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    void ackEvents(unsigned int numEvents);
 
    //! \brief  Remove the specified number of entries from the completion queue.
    //! \param  numEntries Maximum number of entries to remove.
    //! \return Number of completion queue entries removed from completion queue.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    int removeCompletions(int numEntries = 1);
 
@@ -122,7 +122,7 @@ public:
 
    int poll_completion(struct ibv_wc *completion);
 
-private:
+//private:
 
    //! Context for IB device.
    struct ibv_context *_context;

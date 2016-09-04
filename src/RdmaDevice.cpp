@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,20 +33,21 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaDevice.cc 
+//! \file  RdmaDevice.cc
 //! \brief Methods for bgcios::RdmaDevice class.
 
 // Includes
-#include <RdmaDevice.h>
-#include <RdmaError.h>
-#include "RdmaLogging.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
 #include <errno.h>
 #include <iostream>
 #include <sstream>
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 
 bool RdmaDevice::bgvrnic_device = false;
 
@@ -61,7 +62,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
    if (_deviceList == NULL) {
     //      std::cout << "there are no InfiniBand devices available on the node" << std::endl;
       LOG_ERROR_MSG("there are no InfiniBand devices available on the node");
-      RdmaError e(ENODEV, "no InfiniBand devices available");
+      rdma_error e(ENODEV, "no InfiniBand devices available");
       throw e;
    }
 
@@ -89,7 +90,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
       LOG_ERROR_MSG("InfiniBand device " << device << " was not found");
       std::ostringstream what;
       what << "InfiniBand device " << device << " not found";
-      RdmaError e(ENODEV, what.str());
+      rdma_error e(ENODEV, what.str());
       throw e;
    }
    LOG_CIOS_DEBUG_MSG("found InfiniBand device " << getDeviceName());
@@ -100,8 +101,8 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
   if (!interface.empty()) {
    // Get the list of network interfaces.
    if (getifaddrs(&_interfaceList) != 0) {
-      RdmaError e(errno, "getifaddrs() failed");
-      LOG_ERROR_MSG("error getting list of network interfaces: " << RdmaError::errorString(e.errcode()));
+      rdma_error e(errno, "getifaddrs() failed");
+      LOG_ERROR_MSG("error getting list of network interfaces: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -118,7 +119,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
       LOG_ERROR_MSG("network interface " << interface << " was not found on the node");
       std::ostringstream what;
       what << "network interface " << interface << " not found";
-      RdmaError e(ENOENT, what.str());
+      rdma_error e(ENOENT, what.str());
       throw e;
    }
    LOG_CIOS_DEBUG_MSG("found network interface " << getInterfaceName());

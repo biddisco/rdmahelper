@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,14 +33,14 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaServer.h 
+//! \file  RdmaServer.h
 //! \brief Declaration for bgcios::RdmaServer class.
 
 #ifndef COMMON_RDMASERVER_H
 #define COMMON_RDMASERVER_H
 
-#include "RdmaConnection.h"
-#include "RdmaSharedReceiveQueue.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnection.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaSharedReceiveQueue.h>
 #include <netinet/in.h>
 #include <memory>
 
@@ -61,7 +61,7 @@ public:
    //! \brief  Constructor.
    //! \param  addr IPv4 address to bind to.
    //! \param  port Port number.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaServer(in_addr_t addr, in_port_t port);
 
@@ -84,7 +84,7 @@ public:
 
    // overridden to support shared receive queue
    virtual uint64_t
-   postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
+   postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false)
    {
      struct ibv_srq *srq = _srq->get_SRQ();
      if (!srq) {
@@ -108,7 +108,7 @@ public:
      struct ibv_recv_wr *badRequest;
      int err = ibv_post_srq_recv(srq, &recv_wr, &badRequest);
      if (err!=0) {
-       throw(RdmaError(err, "postSendNoImmed failed"));
+       throw(rdma_error(err, "postSendNoImmed SRQ failed"));
      }
      LOG_DEBUG_MSG(_tag.c_str() << "posting SRQ Recv wr_id " << hexpointer(recv_wr.wr_id) << " with Length " << hexlength(length) << " " << hexpointer(region->getAddress()));
      return recv_wr.wr_id;

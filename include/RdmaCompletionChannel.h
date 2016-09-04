@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -40,7 +40,7 @@
 #define COMMON_RDMACOMPLETIONCHANNEL_H
 
 // Includes
-#include "RdmaCompletionQueue.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
 #include <inttypes.h>
 #include <infiniband/verbs.h>
 #include <memory>
@@ -60,7 +60,7 @@ public:
    //! \param  context InfiniBand device context.
    //! \param  nonblockMode True to put completion channel in non-blocking mode.
    //! \param  ackLimit Number of notification events to accumulate before acknowledging events.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaCompletionChannel(ibv_context *context, bool nonblockMode, unsigned int ackLimit = 1);
 
@@ -81,7 +81,7 @@ public:
    //! \brief  Set non-blocking mode for completion channel.
    //! \param  mode New value for non-blocking mode.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    void setNonBlockMode(bool mode);
 
@@ -104,13 +104,13 @@ public:
 
    //! \brief  Wait for a notification event on the completion channel.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    void waitForEvent(void);
 
    //! \brief  Get a notification event from the completion channel.
    //! \return Pointer to completion queue that has a completion available.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaCompletionQueue *getEvent(void);
 

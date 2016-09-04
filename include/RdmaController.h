@@ -27,16 +27,17 @@
 #ifndef STDIO_HWSTDIOCONTROLLER_H
 #define STDIO_HWSTDIOCONTROLLER_H
 
-#include "rdmahelper_defines.h"
-#include "RdmaLogging.h"
-//
+//#define USE_SHARED_RECEIVE_QUEUE
 #include <hpx/lcos/local/shared_mutex.hpp>
+//
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionChannel.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaClient.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaServer.h>
+//
 #include <plugins/parcelport/verbs/unordered_map.hpp>
 //
-#include <RdmaCompletionChannel.h>
-#include <RdmaClient.h>
-#include <RdmaServer.h>
-#include <RdmaError.h>
 #include <memory>
 #include <deque>
 #include <chrono>
@@ -55,7 +56,7 @@ class RdmaController
 public:
     typedef std::pair<uint32_t, RdmaClientPtr> ClientMapPair;
 
-#ifdef RDMAHELPER_HAVE_HPX
+#ifdef RDMA_HANDLER_HAVE_HPX
     typedef hpx::lcos::local::spinlock               mutex_type;
     typedef std::unique_lock<mutex_type>             unique_lock;
     typedef hpx::lcos::local::condition_variable_any condition_type;
@@ -113,12 +114,12 @@ public:
 
     //! Listener for RDMA connections.
     bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
-    bgcios::RdmaProtectionDomainPtr getProtectionDomain() { return this->_protectionDomain; }
+    bgcios::rdma_protection_domainPtr getProtectionDomain() { return this->_protectionDomain; }
     bgcios::RdmaClientPtr getClient(uint32_t qp) {
         return _clients[qp];
     }
 
-    RdmaMemoryPoolPtr getMemoryPool() { return _memoryPool; }
+    rdma_memory_poolPtr getMemoryPool() { return _memoryPool; }
 
     template <typename Function>
     void for_each_client(Function lambda)
@@ -133,7 +134,7 @@ public:
     typedef std::function<int(struct ibv_wc completion, RdmaClient *client)> CompletionFunction;
     void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
 
-    void freeRegion(RdmaMemoryRegion *region);
+    void freeRegion(rdma_memory_region *region);
 
     int num_clients() { return _clients.size(); }
 
@@ -169,7 +170,7 @@ private:
     bgcios::RdmaServerPtr _rdmaListener;
 
     //! Protection domain for all resources.
-    bgcios::RdmaProtectionDomainPtr _protectionDomain;
+    bgcios::rdma_protection_domainPtr _protectionDomain;
 
     //! Completion channel for all completion queues.
     bgcios::RdmaCompletionChannelPtr _completionChannel;
@@ -180,12 +181,9 @@ private:
         map_read_lock_type;
 
     //! Large memory region for transferring data (used for both inbound and outbound data).
-    bgcios::RdmaMemoryRegionPtr _largeRegion;
+    bgcios::rdma_memory_regionPtr _largeRegion;
 
-    RdmaMemoryPoolPtr _memoryPool;
-
-    mutex_type      _event_mutex;
-    condition_type  _event_cond;
+    rdma_memory_poolPtr _memoryPool;
 
     //! \brief  Transfer data to the client from the large memory region.
     //! \param  address Address of remote memory region.
@@ -210,7 +208,7 @@ private:
            while (!completionChannelHandler(reqID));
        }
 
-       catch (const RdmaError& e) {
+       catch (const rdma_error& e) {
            rc = (uint32_t)e.errcode();
        }
 
@@ -247,7 +245,7 @@ private:
            while (!completionChannelHandler(reqID));
        }
 
-       catch (const RdmaError& e) {
+       catch (const rdma_error& e) {
            rc = (uint32_t)e.errcode();
            std::cout << "Caught an exception 8 " << std::endl;
        }

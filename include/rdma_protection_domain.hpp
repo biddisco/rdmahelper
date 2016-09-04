@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,57 +33,70 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaError.h 
-//! \brief Declaration and inline methods for bgcios::RdmaError class.
+//! \file  rdma_protection_domain.h
+//! \brief Declaration and inline methods for bgcios::rdma_protection_domain class.
 
-#ifndef COMMON_RDMAERROR_H
-#define COMMON_RDMAERROR_H
+#ifndef COMMON_RDMAPROTECTIONDOMAIN_H
+#define COMMON_RDMAPROTECTIONDOMAIN_H
 
 // Includes
-#include <stdexcept>
-#include <string.h>
+#include <infiniband/verbs.h>
+//
+#include <memory>
+#include <cstdint>
 
 namespace bgcios
 {
 
-//! Exception for general RDMA errors.
+//! \brief InfiniBand verbs protection domain.
 
-class RdmaError : public std::runtime_error
+class rdma_protection_domain
 {
 public:
 
    //! \brief  Default constructor.
-   //! \param  err Error code value.
-   //! \param  what String describing error.
+   //! \param  context InfiniBand device context.
 
-   RdmaError(int err=0, const std::string what="") : std::runtime_error(what), _errcode(err) { }
+   rdma_protection_domain(struct ibv_context *context);
 
-   int errcode(void) const { return _errcode; }
+   //! \brief  Default destructor.
 
-   //! \brief  Return a string describing an errno value.
-   //! \param  error Errno value.
-   //! \return Pointer to string describing errno value.
-   //! Warning : strerror_r is differnt under posix/gnu
-   //! mac version returns int, others char*
-   static inline char *errorString(int error)
-   {
-   #if !defined(_GNU_SOURCE) || defined(__APPLE__)
-      char buf[256];
-      if (strerror_r (error, buf, sizeof buf)==0) return buf;
-      else return NULL;
-   #else
-      char errorBuffer[256];
-      return strerror_r(error, errorBuffer, sizeof(errorBuffer));
-   #endif
-   }
+   ~rdma_protection_domain();
 
-protected:
+   //! \brief  Get the pointer to the protection domain for use with verbs.
+   //! \return Pointer to protection domain.
 
-   //! Error code (typically errno from RDMA function).
-   int _errcode;
+   struct ibv_pd *getDomain(void) const { return _protectionDomain; }
+
+   //! \brief  Get the handle that identifies the protection domain.
+   //! \return Handle.
+
+   uint32_t getHandle(void) const { return _protectionDomain != NULL ? _protectionDomain->handle : 0; }
+
+   //! \brief  Write info about the protection domain to the specified stream.
+   //! \param  os Output stream to write to.
+   //! \return Output stream.
+
+   std::ostream& writeTo(std::ostream& os) const;
+
+private:
+
+   //! Protection domain.
+   struct ibv_pd *_protectionDomain;
+
 };
+
+//! Smart pointer for rdma_protection_domain object.
+typedef std::shared_ptr<rdma_protection_domain> rdma_protection_domainPtr;
+
+//! \brief  rdma_protection_domain shift operator for output.
+
+inline std::ostream& operator<<(std::ostream& os, const rdma_protection_domain& pd)
+{
+   return pd.writeTo(os);
+}
 
 } // namespace bgcios
 
-#endif // COMMON_RDMAERROR_H
+#endif // COMMON_RDMAPROTECTIONDOMAIN_H
 

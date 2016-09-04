@@ -1,34 +1,16 @@
-// Copyright (c) 2014-2015 John Biddiscombe
-// Copyright (c) 2011,2012 IBM Corp.
+//  Copyright (c) 2014-2016 John Biddiscombe
 //
-// ================================================================
-// Portions of this code taken from IBM BlueGene-Q source
-//
-// This software is available to you under the
-// Eclipse Public License (EPL).
-//
-// Please refer to the file "eclipse-1.0.txt"
-// ================================================================
-//
-#ifndef __RdmaMemoryPool_hpp_
-#define __RdmaMemoryPool_hpp_
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifdef HPX_HAVE_PARCELPORT_VERBS
-# ifndef RDMAHELPER_HAVE_HPX
-#  define RDMAHELPER_HAVE_HPX
-# endif
-#endif
-
-#ifdef RDMAHELPER_HAVE_HPX
- #include <hpx/lcos/local/mutex.hpp>
- #include <hpx/lcos/local/spinlock.hpp>
- #include <hpx/lcos/local/condition_variable.hpp>
- #include <hpx/traits/is_chunk_allocator.hpp>
- #include <hpx/util/memory_chunk_pool_allocator.hpp>
-#else
- #include <mutex>
- #include <condition_variable>
-#endif
+#ifndef HPX_PARCELSET_POLICIES_VERBS_MEMORY_POOL
+#define HPX_PARCELSET_POLICIES_VERBS_MEMORY_POOL
+//
+#include <hpx/lcos/local/mutex.hpp>
+#include <hpx/lcos/local/spinlock.hpp>
+#include <hpx/lcos/local/condition_variable.hpp>
+#include <hpx/traits/is_chunk_allocator.hpp>
+#include <hpx/util/memory_chunk_pool_allocator.hpp>
 //
 #include <atomic>
 #include <stack>
@@ -36,14 +18,9 @@
 #include <iostream>
 //
 #include <boost/noncopyable.hpp>
-#ifndef __BGQ__
-  #include "RdmaProtectionDomain.h"
-  #include "RdmaMemoryRegion.h"
-#else
-  #include "CNKMemoryRegion.h"
-#endif
-
-#include "RdmaLogging.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_region.hpp>
 
 // the default memory chunk size in bytes
 #define RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE  0x001000 // 4KB
@@ -51,15 +28,15 @@
 #define RDMA_DEFAULT_MEMORY_POOL_LARGE_CHUNK_SIZE  0x100000 // 1MB
 
 // the default number of chunks we allocate with our pool
-#define RDMA_DEFAULT_CHUNKS_ALLOC 32
+#define RDMA_DEFAULT_CHUNKS_ALLOC 256
 // the maximum number of chunks we can allocate with our pool
-#define RDMA_MAX_CHUNKS_ALLOC 64
+#define RDMA_MAX_CHUNKS_ALLOC 256
 // the maximum number of preposted receives
-#define RDMA_MAX_PREPOSTS 32
+#define RDMA_MAX_PREPOSTS 8
 
 #define RDMA_DEFAULT_MEMORY_POOL_MAX_SMALL_CHUNKS  RDMA_MAX_CHUNKS_ALLOC
-#define RDMA_DEFAULT_MEMORY_POOL_MAX_MEDIUM_CHUNKS 16
-#define RDMA_DEFAULT_MEMORY_POOL_MAX_LARGE_CHUNKS  4
+#define RDMA_DEFAULT_MEMORY_POOL_MAX_MEDIUM_CHUNKS 64
+#define RDMA_DEFAULT_MEMORY_POOL_MAX_LARGE_CHUNKS  16
 
 // if the HPX configuration has set a different value, use it
 #if defined(HPX_PARCELPORT_VERBS_MEMORY_CHUNK_SIZE)
@@ -96,9 +73,9 @@ public:
 
 using namespace bgcios;
 
-struct RdmaMemoryPool;
+struct rdma_memory_pool;
 
-#ifdef RDMAHELPER_HAVE_HPX
+#ifdef RDMA_HANDLER_HAVE_HPX
 // -------------------------
 // specialize chunk pool allocator traits for this memory_chunk_pool
 // -------------------------
@@ -108,11 +85,11 @@ namespace hpx { namespace traits
     // is smaller than some threshold, then the pool must declare
     // std::size_t small_chunk_size_
     template <typename T, typename M>
-    struct is_chunk_allocator<util::detail::memory_chunk_pool_allocator<T,RdmaMemoryPool,M>>
+    struct is_chunk_allocator<util::detail::memory_chunk_pool_allocator<T,rdma_memory_pool,M>>
       : std::false_type {};
 
     template <>
-    struct is_chunk_allocator<RdmaMemoryPool>
+    struct is_chunk_allocator<rdma_memory_pool>
       : std::false_type {};
 }}
 #endif
@@ -123,8 +100,8 @@ namespace hpx { namespace traits
 // ---------------------------------------------------------------------------
 struct pool_container
 {
-    typedef std::function<RdmaMemoryRegionPtr(std::size_t)> regionAllocFunction;
-#ifdef RDMAHELPER_HAVE_HPX
+    typedef std::function<rdma_memory_regionPtr(std::size_t)> regionAllocFunction;
+#ifdef RDMA_HANDLER_HAVE_HPX
     typedef hpx::lcos::local::spinlock                mutex_type;
     typedef std::lock_guard<mutex_type>               scoped_lock;
     typedef std::unique_lock<mutex_type>              unique_lock;
@@ -150,7 +127,7 @@ struct pool_container
         //
         for (std::size_t i=0; i<_num_chunks; i++) {
             LOG_DEBUG_MSG("Allocate Block " << i << " of size " << hexlength(chunk_size_));
-            RdmaMemoryRegionPtr region = f(chunk_size_);
+            rdma_memory_regionPtr region = f(chunk_size_);
             if (region!=nullptr) {
                 block_list_[region.get()] = region;
                 push(region.get());
@@ -183,7 +160,7 @@ struct pool_container
     }
 
     // ------------------------------------------------------------------------
-    void push(RdmaMemoryRegion *region)
+    void push(rdma_memory_region *region)
     {
         LOG_TRACE_MSG("Push block " << hexpointer(region->getAddress()) << hexlength(region->getLength()));
         // we must protect our mem buffer from thread contention
@@ -210,7 +187,7 @@ struct pool_container
         LOG_DEBUG_MSG("memBuffer_cond_ notified one");
     }
 
-    RdmaMemoryRegion *pop()
+    rdma_memory_region *pop()
     {
         unique_lock lock1(memBuffer_mutex_);
         // if we have not exceeded our max size, allocate a new block
@@ -225,10 +202,10 @@ struct pool_container
         });
         // get a block
 #ifndef NDEBUG
-        RdmaMemoryRegion *region = free_list_.back();
+        rdma_memory_region *region = free_list_.back();
         free_list_.pop_back();
 #else
-        RdmaMemoryRegion *region = free_list_.top();
+        rdma_memory_region *region = free_list_.top();
         free_list_.pop();
 #endif
         // Keep reference counts to self so that we can check
@@ -243,24 +220,24 @@ struct pool_container
     std::size_t                     max_chunks_;
     std::atomic<int>                region_use_count_;
 #ifndef NDEBUG
-    std::deque<RdmaMemoryRegion*>   free_list_;
+    std::deque<rdma_memory_region*>   free_list_;
 #else
-    std::stack<RdmaMemoryRegion*>   free_list_;
+    std::stack<rdma_memory_region*>   free_list_;
 #endif
     mutex_type                      memBuffer_mutex_;
     condition_type                  memBuffer_cond_;
-    std::unordered_map<RdmaMemoryRegion*, RdmaMemoryRegionPtr> block_list_;
+    std::unordered_map<rdma_memory_region*, rdma_memory_regionPtr> block_list_;
 };
 
 // ---------------------------------------------------------------------------
 // memory pool is a type of std:: compatible allocator
 // ---------------------------------------------------------------------------
-struct RdmaMemoryPool : boost::noncopyable
+struct rdma_memory_pool : boost::noncopyable
 {
     typedef std::size_t size_type;
     typedef char        value_type;
 
-#ifdef RDMAHELPER_HAVE_HPX
+#ifdef RDMA_HANDLER_HAVE_HPX
     typedef hpx::lcos::local::mutex                   mutex_type;
     typedef std::lock_guard<mutex_type>               scoped_lock;
     typedef std::unique_lock<mutex_type>              unique_lock;
@@ -274,14 +251,14 @@ struct RdmaMemoryPool : boost::noncopyable
 #ifdef __BGQ__
     typedef int protection_domain_type;
 #else
-    typedef RdmaProtectionDomainPtr protection_domain_type;
+    typedef rdma_protection_domainPtr protection_domain_type;
 #endif
 
     // constructor
-    RdmaMemoryPool(protection_domain_type pd, std::size_t chunk_size, std::size_t init_chunks, std::size_t max_chunks);
+    rdma_memory_pool(protection_domain_type pd, std::size_t chunk_size, std::size_t init_chunks, std::size_t max_chunks);
 
     // destructor
-    ~RdmaMemoryPool();
+    ~rdma_memory_pool();
 
     // set the protection domain, triggers pool deallocation and reallocation
     void setProtectionDomain(protection_domain_type pd);
@@ -289,23 +266,23 @@ struct RdmaMemoryPool : boost::noncopyable
     int   DeallocateList();
     int   DeallocateListBase();
 
-    RdmaMemoryRegionPtr AllocateRegisteredBlock(std::size_t length);
-    RdmaMemoryRegion   *AllocateTemporaryBlock(std::size_t length);
+    rdma_memory_regionPtr AllocateRegisteredBlock(std::size_t length);
+    rdma_memory_region   *AllocateTemporaryBlock(std::size_t length);
 
     // -------------------------
     // User allocation interface
     // -------------------------
-    // The RdmaMemoryRegion* versions of allocate/deallocate
+    // The rdma_memory_region* versions of allocate/deallocate
     // should be used in preference to the std:: compatible
     // versions using char* for efficiency
 
     bool canAllocateRegionUnsafe(size_t length);
 
     // allocate a region, if size=0 a small region is returned
-    RdmaMemoryRegion *allocateRegion(size_t size);
+    rdma_memory_region *allocateRegion(size_t size);
 
     // release a region back to the pool
-    void deallocate(RdmaMemoryRegion *region);
+    void deallocate(rdma_memory_region *region);
 
     // allocate a region, returning a memory block address
     char *allocate(size_t size);
@@ -315,12 +292,12 @@ struct RdmaMemoryPool : boost::noncopyable
     // less efficient than releasing memory via the region pointer
     void deallocate(void *address, size_t size=0)
     {
-        RdmaMemoryRegion *region = pointer_map_[address];
+        rdma_memory_region *region = pointer_map_[address];
         deallocate(region);
     }
 
-    // find an RdmaMemoryRegion* from the memory address it wraps
-    RdmaMemoryRegion *RegionFromAddress(char * const addr) {
+    // find an rdma_memory_region* from the memory address it wraps
+    rdma_memory_region *RegionFromAddress(char * const addr) {
         return pointer_map_[addr];
     }
 
@@ -331,7 +308,7 @@ struct RdmaMemoryPool : boost::noncopyable
 
     // used to map the internal memory address to the region that
     // holds the registration information
-    std::unordered_map<const void *, RdmaMemoryRegion*> pointer_map_;
+    std::unordered_map<const void *, rdma_memory_region*> pointer_map_;
 
     protection_domain_type    protection_domain_;
     bool                      isServer;
@@ -344,6 +321,6 @@ struct RdmaMemoryPool : boost::noncopyable
 
 };
 
-typedef std::shared_ptr<RdmaMemoryPool> RdmaMemoryPoolPtr;
+typedef std::shared_ptr<rdma_memory_pool> rdma_memory_poolPtr;
 
 #endif

@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -37,22 +37,24 @@
 //! \brief Methods for bgcios::RdmaCompletionChannel class.
 
 // Includes
-#include "RdmaLogging.h"
-#include <RdmaCompletionChannel.h>
-#include <RdmaError.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionChannel.h>
+//
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
-LOG_DECLARE_FILE("cios.common");
+//LOG_DECLARE_FILE("cios.common");
 
 RdmaCompletionChannel::RdmaCompletionChannel(ibv_context *context, bool nonblockMode, unsigned int ackLimit)
 {
    // Validate context pointer (since ibv_ functions won't check it).
    if (context == NULL) {
-      RdmaError e(EFAULT, "device context pointer is null");
+      rdma_error e(EFAULT, "device context pointer is null");
       LOG_ERROR_MSG("error with context pointer " << context << " when constructing completion channel");
       throw e;
    }
@@ -60,7 +62,7 @@ RdmaCompletionChannel::RdmaCompletionChannel(ibv_context *context, bool nonblock
    // Create a completion channel.
    _completionChannel = ibv_create_comp_channel(context);
    if (_completionChannel == NULL) {
-      RdmaError e(ENOMEM, "ibv_create_comp_channel() failed");
+      rdma_error e(ENOMEM, "ibv_create_comp_channel() failed");
       LOG_ERROR_MSG("error creating completion channel");
       throw e;
    }
@@ -88,7 +90,7 @@ RdmaCompletionChannel::~RdmaCompletionChannel()
          LOG_CIOS_DEBUG_MSG("destroyed completion channel using fd " << hexnumber(fd));
       }
       else {
-         LOG_ERROR_MSG("error destroying completion channel using fd " << hexnumber(fd) << ": " << RdmaError::errorString(err));
+         LOG_ERROR_MSG("error destroying completion channel using fd " << hexnumber(fd) << ": " << rdma_error::error_string(err));
       }
    }
 }
@@ -107,9 +109,9 @@ RdmaCompletionChannel::setNonBlockMode(bool mode)
    }
    int rc = fcntl(_completionChannel->fd, F_SETFL, flags);
    if (rc != 0) {
-      RdmaError e(errno, "fcntl() failed");
+      rdma_error e(errno, "fcntl() failed");
       LOG_ERROR_MSG("error changing completion channel with fd " << hexnumber(_completionChannel->fd) << " non-blocking mode using flags " <<
-                    std::hex << flags << ": " << RdmaError::errorString(e.errcode()));
+                    std::hex << flags << ": " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -149,8 +151,8 @@ RdmaCompletionChannel::waitForEvent(void)
 
    int rc = poll(&pollInfo, 1, -1); // Wait forever
    if (rc != 1) {
-      RdmaError e(errno, "poll() failed");
-      LOG_ERROR_MSG("error polling completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << RdmaError::errorString(e.errcode()));
+      rdma_error e(errno, "poll() failed");
+      LOG_ERROR_MSG("error polling completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -170,8 +172,8 @@ RdmaCompletionQueue *RdmaCompletionChannel::getEvent(void)
          LOG_CIOS_TRACE_MSG("no notification events available from completion channel using fd " << hexnumber(_completionChannel->fd));
          return NULL;
       }
-      RdmaError e(err, "ibv_get_cq_event() failed");
-      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << RdmaError::errorString(e.errcode()));
+      rdma_error e(err, "ibv_get_cq_event() failed");
+      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -179,7 +181,7 @@ RdmaCompletionQueue *RdmaCompletionChannel::getEvent(void)
    RdmaCompletionQueue *completionQ = _queues[eventQ->handle].get();
    if (completionQ == NULL) {
       // ibv_ack_cq_event(eventQ, 1);
-      RdmaError e(ESRCH, "completion queue not found");
+      rdma_error e(ESRCH, "completion queue not found");
       LOG_ERROR_MSG("could not find completion queue " << eventQ->handle << " in list after successful ibv_get_cq_event");
       throw e;
    }

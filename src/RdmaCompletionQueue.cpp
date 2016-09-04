@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -36,15 +36,16 @@
 //! \file  RdmaCompletionQueue.cc
 //! \brief Methods for bgcios::RdmaCompletionQueue class.
 
-#include <RdmaCompletionQueue.h>
-#include <RdmaError.h>
-#include "RdmaLogging.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <boost/lexical_cast.hpp>
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 const int RdmaCompletionQueue::MaxQueueSize;
 
@@ -63,7 +64,7 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
 
    // Validate context pointer (since ibv_ functions won't check it).
    if (context == NULL) {
-      RdmaError e(EFAULT, "device context pointer is null");
+      rdma_error e(EFAULT, "device context pointer is null");
       LOG_ERROR_MSG("error with context pointer " << context << " when constructing completion queue");
       throw e;
    }
@@ -72,8 +73,8 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
    // Create a completion queue.
    _completionQ = ibv_create_cq(context, qSize, NULL, completionChannel, 0);
    if (_completionQ == NULL) {
-      RdmaError e(errno, "ibv_create_cq() failed");
-      LOG_ERROR_MSG(_tag << "error creating completion queue: " << RdmaError::errorString(e.errcode()));
+      rdma_error e(errno, "ibv_create_cq() failed");
+      LOG_ERROR_MSG(_tag << "error creating completion queue: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -86,8 +87,8 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
    try {
       requestEvent();
    }
-   catch (const RdmaError& e) {
-      LOG_ERROR_MSG(_tag << "error requesting first completion queue notification: " << RdmaError::errorString(e.errcode()));
+   catch (const rdma_error& e) {
+      LOG_ERROR_MSG(_tag << "error requesting first completion queue notification: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
    LOG_CIOS_TRACE_MSG(_tag << "requested first notification for completion queue");
@@ -102,7 +103,7 @@ RdmaCompletionQueue::~RdmaCompletionQueue()
          LOG_CIOS_DEBUG_MSG(_tag << "destroyed completion queue");
       }
       else {
-         LOG_ERROR_MSG(_tag << "error destroying completion queue: " << RdmaError::errorString(err));
+         LOG_ERROR_MSG(_tag << "error destroying completion queue: " << rdma_error::error_string(err));
       }
    }
 }
@@ -112,8 +113,8 @@ RdmaCompletionQueue::requestEvent(void)
 {
    int err = ibv_req_notify_cq(_completionQ, 0);
    if (err != 0) {
-      RdmaError e(err, "ibv_req_notify_cq() failed");
-      LOG_ERROR_MSG(_tag << "error requesting notification for completion queue: " << RdmaError::errorString(e.errcode()));
+      rdma_error e(err, "ibv_req_notify_cq() failed");
+      LOG_ERROR_MSG(_tag << "error requesting notification for completion queue: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -136,8 +137,8 @@ int RdmaCompletionQueue::poll_completion(struct ibv_wc *completion)
 {
     int nc = ibv_poll_cq(_completionQ, 1, completion);
     if (nc < 0) {
-        RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
-        LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
+        rdma_error e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
+        LOG_ERROR_MSG(_tag << "error polling completion queue: " << rdma_error::error_string(e.errcode()));
         throw e;
     }
     if (nc>0) {
@@ -166,12 +167,12 @@ int RdmaCompletionQueue::removeCompletions(int numEntries)
     //
     int nc = ibv_poll_cq(_completionQ, numEntries, &(_completions[_numCompletions]));
     if (nc < 0) {
-        RdmaError e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
-        LOG_ERROR_MSG(_tag << "error polling completion queue: " << RdmaError::errorString(e.errcode()));
+        rdma_error e(EINVAL, "ibv_poll_cq() failed"); // Documentation does not indicate how errno is returned
+        LOG_ERROR_MSG(_tag << "error polling completion queue: " << rdma_error::error_string(e.errcode()));
         throw e;
     }
     for (int i=0; i<nc; i++){
-        CIOSLOGMSG_WC(BGV_WORK_CMP, _completions+i);
+//        CIOSLOGMSG_WC(BGV_WORK_CMP, _completions+i);
     }
     _numCompletions += nc;
     if (nc>0) {
@@ -242,6 +243,6 @@ RdmaCompletionQueue::writeTo(std::ostream& os) const
    os << _tag;
    os << " numCompletions=" << _numCompletions << " nextCompletion=" << _nextCompletion << " totalCompletions=" << _totalCompletions;
    os << " totalEvents=" << _totalEvents;
-   return os; 
+   return os;
 }
 

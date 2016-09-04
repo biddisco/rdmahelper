@@ -37,10 +37,11 @@
 //! \brief Methods for bgcios::RdmaServer class.
 
 // Includes
-#include "RdmaLogging.h"
-#include <RdmaServer.h>
-#include <RdmaError.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaServer.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
 //LOG_DECLARE_FILE("cios.common");
@@ -55,8 +56,8 @@ RdmaServer::RdmaServer(in_addr_t addr, in_port_t port) : RdmaConnection()
    // Bind an address for connections.
    int err = bind(addr, port);
    if (err != 0) {
-      RdmaError e(err, "bind() failed");
-      LOG_ERROR_MSG(_tag << "error binding RdmaServer to port " << port << ": " << RdmaError::errorString(e.errcode()));
+      rdma_error e(err, "bind() failed");
+      LOG_ERROR_MSG(_tag << "error binding RdmaServer to port " << port << ": " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -81,7 +82,7 @@ RdmaServer::bind(in_addr_t addr, in_port_t port)
    int err = rdma_bind_addr(_cmId, (struct sockaddr *)&_localAddress);
    if (err != 0) {
       err = abs(err);
-      LOG_ERROR_MSG(_tag << "error binding to address " << addressToString(&_localAddress) << ": " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error binding to address " << addressToString(&_localAddress) << ": " << rdma_error::error_string(err));
       abort();
       return err;
    }
@@ -105,7 +106,7 @@ RdmaServer::listen(int backlog)
    int err = rdma_listen(_cmId, backlog);
    if (err != 0) {
       err = abs(err);
-      LOG_ERROR_MSG(_tag << "error listening for connections: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error listening for connections: " << rdma_error::error_string(err));
       return err;
    }
    LOG_CIOS_DEBUG_MSG(_tag << "listening for connections with backlog " << backlog);

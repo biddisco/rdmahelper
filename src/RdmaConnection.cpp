@@ -36,9 +36,11 @@
 //! \file  RdmaConnection.cc
 //! \brief Methods for bgcios::RdmaConnection class.
 
-#include "RdmaLogging.h"
-#include <RdmaConnection.h>
-#include <RdmaError.h>
+#include <hpx/hpx.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnection.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/event_channel.hpp>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -54,8 +56,9 @@
 #include <sstream>
 #include <iomanip>
 
-#define CIOS_WORK_REQUESTS 128
+#define HPX_PARCELPORT_VERBS_MAX_WORK_REQUESTS 128
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
 //LOG_DECLARE_FILE("cios.common");
@@ -77,13 +80,13 @@ RdmaConnection::RdmaConnection(const std::string localAddr, const std::string lo
    struct sockaddr_in localAddress;
    int err = stringToAddress(localAddr, localPort, &localAddress);
    if (err != 0) {
-      RdmaError e(err, "failed to generate local address");
+      rdma_error e(err, "failed to generate local address");
       throw e;
    }
    struct sockaddr_in remoteAddress;
    err = stringToAddress(remoteAddr, remotePort, &remoteAddress);
    if (err != 0) {
-      RdmaError e(err, "failed to generate remote address");
+      rdma_error e(err, "failed to generate remote address");
       throw e;
    }
 
@@ -91,7 +94,7 @@ RdmaConnection::RdmaConnection(const std::string localAddr, const std::string lo
    resolveAddress(&localAddress, &remoteAddress);
 }
 
-RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
+RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
                                RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue)
 {
    // Initialize object to known state.
@@ -101,9 +104,8 @@ RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr 
    _cmId = cmId;
    _srq  = SRQ;
    memcpy(&_remoteAddress, &(_cmId->route.addr.dst_addr), sizeof(struct sockaddr_in));
-
    // Create a queue pair.
-   createQp(domain, sendCompletionQ, recvCompletionQ, CIOS_WORK_REQUESTS, signalSendQueue);
+   createQp(domain, sendCompletionQ, recvCompletionQ, HPX_PARCELPORT_VERBS_MAX_WORK_REQUESTS, signalSendQueue);
 }
 
 RdmaConnection::~RdmaConnection(void)
@@ -121,7 +123,7 @@ RdmaConnection::~RdmaConnection(void)
       }
       else {
          int err = errno;
-         LOG_ERROR_MSG(_tag << "error destroying rdma cm id " << _cmId << ": " << RdmaError::errorString(err));
+         LOG_ERROR_MSG(_tag << "error destroying rdma cm id " << _cmId << ": " << rdma_error::error_string(err));
       }
    }
 
@@ -159,8 +161,8 @@ RdmaConnection::createId(void)
    // Create the event channel.
    _eventChannel = rdma_create_event_channel();
    if (_eventChannel == nullptr) {
-      RdmaError e(EINVAL, "rdma_create_event_channel() failed");
-      LOG_ERROR_MSG(_tag << "error creating rdma event channel: " << RdmaError::errorString(e.errcode()));
+      rdma_error e(EINVAL, "rdma_create_event_channel() failed");
+      LOG_ERROR_MSG(_tag << "error creating rdma event channel: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
    LOG_CIOS_DEBUG_MSG(_tag << "created rdma event channel with fd " << hexnumber(_eventChannel->fd));
@@ -168,8 +170,8 @@ RdmaConnection::createId(void)
    // Create the rdma cm id.
    int err = rdma_create_id(_eventChannel, &_cmId, this, RDMA_PS_TCP);
    if (err != 0) {
-      RdmaError e(err, "rdma_create_id() failed");
-      LOG_ERROR_MSG(_tag << "error creating rdma cm id: " << RdmaError::errorString(err));
+      rdma_error e(err, "rdma_create_id() failed");
+      LOG_ERROR_MSG(_tag << "error creating rdma cm id: " << rdma_error::error_string(err));
       throw e;
    }
 
@@ -178,8 +180,9 @@ RdmaConnection::createId(void)
 }
 
 void
-RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
-                         uint32_t maxWorkRequests, bool signalSendQueue)
+RdmaConnection::createQp(rdma_protection_domainPtr domain,
+    RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
+    uint32_t maxWorkRequests, bool signalSendQueue)
 {
    // Create a queue pair.
    struct ibv_qp_init_attr qpAttributes;
@@ -204,8 +207,11 @@ RdmaConnection::createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr 
 //   int rc = (_cmId->qp==nullptr);
 
    if (rc != 0) {
-      RdmaError e(errno, "rdma_create_qp() failed");
-      LOG_ERROR_MSG(_tag << "error creating queue pair: " << RdmaError::errorString(e.errcode()));
+      rdma_error e(errno, "rdma_create_qp() failed");
+      LOG_ERROR_MSG(_tag << "createQp : error creating queue pair: " << hexpointer(this)
+          "local address " << addressToString(&_localAddress)
+          << " remote address " << addressToString(&_remoteAddress)
+          << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -225,8 +231,8 @@ RdmaConnection::resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in
    // Resolve the addresses.
    int rc = rdma_resolve_addr(_cmId, (struct sockaddr *)localAddr, (struct sockaddr *)remoteAddr, 1000); // Configurable timeout?
    if (rc != 0) {
-      RdmaError e(errno, "rdma_resolve_addr() failed");
-      LOG_ERROR_MSG(_tag << "error resolving remote address " << addressToString(remoteAddr) << ": " << RdmaError::errorString(e.errcode()));
+      rdma_error e(errno, "rdma_resolve_addr() failed");
+      LOG_ERROR_MSG(_tag << "error resolving remote address " << addressToString(remoteAddr) << ": " << rdma_error::error_string(e.errcode()));
       throw e;
    }
 
@@ -239,6 +245,12 @@ RdmaConnection::resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in
    // Wait for ADDR_RESOLVED event.
    int err = hpx::parcelset::policies::verbs::event_channel::get_event(_eventChannel,
        RDMA_CM_EVENT_ADDR_RESOLVED, _event);
+   if (err != 0) {
+       std::cout << _tag << "local address " << addressToString(&_localAddress)
+           << " remote address " << addressToString(&_remoteAddress)
+           << " " << errno << " " << rdma_error::error_string(errno)
+           << std::endl;
+   }
 
    LOG_DEBUG_MSG(_tag << "resolved to address " << addressToString(&_remoteAddress));
 
@@ -288,7 +300,7 @@ RdmaConnection::accept(void)
    int rc = rdma_accept(_cmId, &param);
    if (rc != 0) {
       int err = errno;
-      LOG_ERROR_MSG(_tag << "error accepting connection: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error accepting connection: " << rdma_error::error_string(err));
       return err;
    }
 
@@ -303,7 +315,7 @@ RdmaConnection::reject(struct rdma_cm_id *cmid)
    int rc = rdma_reject(cmid, 0, 0);
    if (rc != 0) {
       int err = errno;
-      LOG_ERROR_MSG(_tag << "error rejecting connection on cmid " << hexpointer(cmid) << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error rejecting connection on cmid " << hexpointer(cmid) << rdma_error::error_string(err));
       return err;
    }
 
@@ -318,7 +330,7 @@ RdmaConnection::resolveRoute(void)
    int rc = rdma_resolve_route(_cmId, 1000); // Configurable timeout?
    if (rc != 0) {
       int err = errno;
-      LOG_ERROR_MSG(_tag << "error resolving route: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error resolving route: " << rdma_error::error_string(err));
       return err;
    }
 
@@ -344,9 +356,13 @@ RdmaConnection::connect(void)
    int rc = rdma_connect(_cmId, &param);
    if (rc != 0) {
       int err = errno;
-      LOG_ERROR_MSG(_tag << "error connecting to " << addressToString(&_remoteAddress) << ": " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error in rdma_connect to "
+          << ipaddress(_remoteAddress.sin_addr.s_addr)
+          << "from " << ipaddress(_localAddress.sin_addr.s_addr)
+          << ": " << rdma_error::error_string(err));
       return err;
    }
+
    using namespace hpx::parcelset::policies::verbs;
    while (event_channel::poll_event_channel(_eventChannel->fd, [](){})==0)
    {
@@ -364,7 +380,9 @@ RdmaConnection::connect(void)
       /* valid REJ from consumer will always contain private data */
       if (_event->status == 28 &&
           _event->param.conn.private_data_len) {
-        LOG_ERROR_MSG(_tag << "rejected IB_CME_DESTINATION_REJECT_PRIVATE_DATA ");
+        LOG_ERROR_MSG(_tag << "received rejected IB_CME_DESTINATION_REJECT_PRIVATE_DATA "
+            << "from " << ipaddress(_remoteAddress.sin_addr.s_addr)
+            << "we are " << ipaddress(_localAddress.sin_addr.s_addr));
       } else {
         LOG_ERROR_MSG(
            "dapl_cma_active: non-consumer REJ," <<
@@ -388,7 +406,7 @@ RdmaConnection::disconnect(bool initiate)
    int err = rdma_disconnect(_cmId);
    if (err != 0) {
       err = abs(err);
-      LOG_ERROR_MSG(_tag << "error disconnect: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error disconnect: " << rdma_error::error_string(err));
       return err;
    }
 
@@ -427,12 +445,12 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
    if (err != 0) {
       if (err==EINVAL)
       {
-        RdmaError e(err, "EINVAL postSendQ");
+        rdma_error e(err, "EINVAL postSendQ");
         throw e;
       }
       else {
-        LOG_ERROR_MSG(_tag << "error posting to send queue: " << RdmaError::errorString(err));
-        RdmaError e(err, "posting to send queue failed");
+        LOG_ERROR_MSG(_tag << "error posting to send queue: " << rdma_error::error_string(err));
+        rdma_error e(err, "posting to send queue failed");
         throw e;
       }
    }
@@ -443,7 +461,7 @@ RdmaConnection::postSendQ(struct ibv_send_wr *request)
 // JB approved
 //
 uint64_t
-RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData)
+RdmaConnection::postSend(rdma_memory_region *region, bool signaled, bool withImmediate, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge;
@@ -479,7 +497,7 @@ RdmaConnection::postSend(RdmaMemoryRegion *region, bool signaled, bool withImmed
 }
 
 uint64_t
-RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData)
+RdmaConnection::postSend_xN(rdma_memory_region *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge[4]; // caution, don't use more than this
@@ -519,7 +537,7 @@ RdmaConnection::postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bo
    return postSendQ(&send_wr);
 }
 
-uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData)
+uint64_t RdmaConnection::postSend_x0(rdma_memory_region *region, bool signaled, bool withImmediate, uint32_t immediateData)
 {
     // Build scatter/gather element for outbound data.
     struct ibv_sge send_sge;
@@ -554,7 +572,7 @@ uint64_t RdmaConnection::postSend_x0(RdmaMemoryRegion *region, bool signaled, bo
     return postSendQ(&send_wr);
 }
 
-uint64_t RdmaConnection::postRead(RdmaMemoryRegion *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length)
+uint64_t RdmaConnection::postRead(rdma_memory_region *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length)
 {
     // Build scatter/gather element for inbound message.
     struct ibv_send_wr *badRequest;
@@ -585,7 +603,7 @@ uint64_t RdmaConnection::postRead(RdmaMemoryRegion *localregion, uint32_t remote
 
 /*
 uint64_t
-RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData)
+RdmaConnection::postSend(rdma_memory_regionPtr region, void *address, uint32_t length, uint32_t immediateData)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge send_sge;
@@ -609,7 +627,7 @@ RdmaConnection::postSend(RdmaMemoryRegionPtr region, void *address, uint32_t len
 }
 
 uint64_t
-RdmaConnection::postRdmaWrite(RdmaMemoryRegionPtr region, uint64_t remoteAddr, uint32_t remoteKey)
+RdmaConnection::postRdmaWrite(rdma_memory_regionPtr region, uint64_t remoteAddr, uint32_t remoteKey)
 {
    // Build scatter/gather element for outbound data.
    struct ibv_sge write_sge;
@@ -635,7 +653,7 @@ RdmaConnection::postRdmaWrite(RdmaMemoryRegionPtr region, uint64_t remoteAddr, u
 }
 
 uint64_t
-RdmaConnection::postRdmaRead(RdmaMemoryRegionPtr region, uint64_t remoteAddr, uint32_t remoteKey)
+RdmaConnection::postRdmaRead(rdma_memory_regionPtr region, uint64_t remoteAddr, uint32_t remoteKey)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_sge read_sge;
@@ -662,7 +680,7 @@ RdmaConnection::postRdmaRead(RdmaMemoryRegionPtr region, uint64_t remoteAddr, ui
 
 
 int
-RdmaConnection::postRecv(RdmaMemoryRegionPtr region)
+RdmaConnection::postRecv(rdma_memory_regionPtr region)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_sge recv_sge;
@@ -684,7 +702,7 @@ printf("just got a local key of %d\n",recv_wr.wr_id);
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
    LOG_CIOS_TRACE_MSG(_tag << "posting RECV work request to recv queue with " << recv_wr.num_sge << " sge, id=" << recv_wr.wr_id << " qp " << _cmId->qp);
    if (err != 0) {
-      LOG_ERROR_MSG(_tag << "error posting to recv queue: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error posting to recv queue: " << rdma_error::error_string(err));
       return err;
    }
 
@@ -699,10 +717,10 @@ RdmaConnection::waitForEvent(void)
    int rc = rdma_get_cm_event(_eventChannel, &_event);
    if (rc != 0) {
       int err = errno;
-      LOG_ERROR_MSG(_tag << "error getting rdma cm event: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error getting rdma cm event: " << rdma_error::error_string(err));
       return err;
    }
-   CIOSLOGEVT_CH(BGV_RECV_EVT,_event);
+//   CIOSLOGEVT_CH(BGV_RECV_EVT,_event);
    return 0;
 }
 
@@ -718,7 +736,7 @@ RdmaConnection::ackEvent(void)
    int err = rdma_ack_cm_event(_event);
    if (err != 0) {
       err = abs(err);
-      LOG_ERROR_MSG(_tag << "error acking event " << rdma_event_str(_event->event) << ": " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "error acking event " << rdma_event_str(_event->event) << ": " << rdma_error::error_string(err));
       return err;
    }
 
@@ -732,7 +750,7 @@ RdmaConnection::stringToAddress(const std::string addrString, const std::string 
    struct addrinfo *res;
    int err = getaddrinfo(addrString.c_str(), portString.c_str(), nullptr, &res);
    if (err != 0) {
-      LOG_ERROR_MSG(_tag << "failed to get address info for " << addrString << ": " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(_tag << "failed to get address info for " << addrString << ": " << rdma_error::error_string(err));
       return err;
    }
 
@@ -874,7 +892,7 @@ RdmaConnection::wr_opcode_str(enum ibv_wr_opcode opcode) const
    return str;
 }
 
-int RdmaConnection::create_srq(RdmaProtectionDomainPtr domain)
+int RdmaConnection::create_srq(rdma_protection_domainPtr domain)
 {
   try {
     _srq = std::make_shared<RdmaSharedReceiveQueue>(_cmId,domain);

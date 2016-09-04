@@ -58,7 +58,7 @@ public:
    //! \brief  Default constructor.
    //! \param  device Name of InfiniBand device.
    //! \param  interface Name of network interface.
-   //! \throws RdmaError
+   //! \throws rdma_error
 
    RdmaDevice(std::string device, std::string interface);
 

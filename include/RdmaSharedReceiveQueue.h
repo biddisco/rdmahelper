@@ -42,7 +42,7 @@
 // Includes
 #include <rdma/rdma_cma.h>
 #include <infiniband/verbs.h>
-#include "RdmaProtectionDomain.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
 
 namespace bgcios
 {
@@ -55,13 +55,13 @@ public:
 
    //! \brief  Default constructor.
 
-   RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain);
+   RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain);
 
    //! \brief  Default destructor.
 
    ~RdmaSharedReceiveQueue();
 
-   struct ibv_srq *get_SRQ() {
+   inline struct ibv_srq *get_SRQ() {
      if (_cmId->qp == NULL) {
        std::cout << "Trying to access SRQ before QP is ready! " << std::endl;
        return NULL;
@@ -71,7 +71,7 @@ public:
 private:
 
    //! Memory region for inbound messages.
-   RdmaProtectionDomainPtr  _domain;
+   rdma_protection_domainPtr  _domain;
    struct ibv_srq_init_attr _srq_attr;
    struct rdma_cm_id       *_cmId;
 };

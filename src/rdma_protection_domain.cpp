@@ -33,69 +33,60 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaProtectionDomain.h
-//! \brief Declaration and inline methods for bgcios::RdmaProtectionDomain class.
-
-#ifndef COMMON_RDMAPROTECTIONDOMAIN_H
-#define COMMON_RDMAPROTECTIONDOMAIN_H
+//! \file  rdma_protection_domain.cc
+//! \brief Methods for bgcios::rdma_protection_domain class.
 
 // Includes
-#include <stdint.h>
-#include <infiniband/verbs.h>
-#include <memory>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+//
+#include <errno.h>
 
-namespace bgcios
+using namespace hpx::parcelset::policies::verbs;
+using namespace bgcios;
+
+//LOG_DECLARE_FILE("cios.common");
+
+
+rdma_protection_domain::rdma_protection_domain(struct ibv_context *context)
 {
+   // Validate context pointer (since ibv_ functions won't check it).
+   if (context == NULL) {
+      rdma_error e(EFAULT, "device context pointer is null");
+      LOG_ERROR_MSG("error with context pointer " << context << " when constructing protection domain");
+      throw e;
+   }
 
-//! \brief InfiniBand verbs protection domain.
-
-class RdmaProtectionDomain
-{
-public:
-
-   //! \brief  Default constructor.
-   //! \param  context InfiniBand device context.
-
-   RdmaProtectionDomain(struct ibv_context *context);
-
-   //! \brief  Default destructor.
-
-   ~RdmaProtectionDomain();
-
-   //! \brief  Get the pointer to the protection domain for use with verbs.
-   //! \return Pointer to protection domain.
-
-   struct ibv_pd *getDomain(void) const { return _protectionDomain; }
-
-   //! \brief  Get the handle that identifies the protection domain.
-   //! \return Handle.
-
-   uint32_t getHandle(void) const { return _protectionDomain != NULL ? _protectionDomain->handle : 0; }
-
-   //! \brief  Write info about the protection domain to the specified stream.
-   //! \param  os Output stream to write to.
-   //! \return Output stream.
-
-   std::ostream& writeTo(std::ostream& os) const;
-
-private:
-
-   //! Protection domain.
-   struct ibv_pd *_protectionDomain;
-
-};
-
-//! Smart pointer for RdmaProtectionDomain object.
-typedef std::shared_ptr<RdmaProtectionDomain> RdmaProtectionDomainPtr;
-
-//! \brief  RdmaProtectionDomain shift operator for output.
-
-inline std::ostream& operator<<(std::ostream& os, const RdmaProtectionDomain& pd)
-{
-   return pd.writeTo(os);
+   // Allocate a protection domain.
+   _protectionDomain = ibv_alloc_pd(context);
+   if (_protectionDomain == NULL) {
+      rdma_error e(ENOMEM, "ibv_alloc_pd() failed");
+      LOG_ERROR_MSG("error allocating protection domain");
+      throw e;
+   }
+   LOG_CIOS_DEBUG_MSG("allocated protection domain " << _protectionDomain->handle);
 }
 
-} // namespace bgcios
+rdma_protection_domain::~rdma_protection_domain()
+{
+   if (_protectionDomain != NULL) {
+      uint32_t handle = _protectionDomain->handle;
+      int err = ibv_dealloc_pd(_protectionDomain);
+      if (err == 0) {
+         _protectionDomain = NULL;
+         LOG_CIOS_DEBUG_MSG("deallocated protection domain " << handle);
+      }
+      else {
+         LOG_ERROR_MSG("error deallocating protection domain " << handle << ": " <<  rdma_error::error_string(err));
+      }
+   }
+}
 
-#endif // COMMON_RDMAPROTECTIONDOMAIN_H
+std::ostream&
+rdma_protection_domain::writeTo(std::ostream& os) const
+{
+   os << "context=" << _protectionDomain->context << " handle=" << _protectionDomain->handle;
+   return os;
+}
 

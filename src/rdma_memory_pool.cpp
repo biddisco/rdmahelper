@@ -1,25 +1,17 @@
-// Copyright (c) 2014-2015 John Biddiscombe
-// Copyright (c) 2011,2012 IBM Corp.
+//  Copyright (c) 2015-2016 John Biddiscombe
 //
-// ================================================================
-// Portions of this code taken from IBM BlueGene-Q source
-//
-// This software is available to you under the
-// Eclipse Public License (EPL).
-//
-// Please refer to the file "eclipse-1.0.txt"
-// ================================================================
-//
-#include "RdmaLogging.h"
-#include "RdmaMemoryPool.h"
-//
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_pool.hpp>
 #include <cstdlib>
 #include <cstdio>
 #include <iomanip>
 #include <functional>
 //
 //----------------------------------------------------------------------------
-RdmaMemoryPool::RdmaMemoryPool(protection_domain_type pd, std::size_t chunk_size,
+rdma_memory_pool::rdma_memory_pool(protection_domain_type pd, std::size_t chunk_size,
         std::size_t init_chunks, std::size_t max_chunks)
 : protection_domain_(pd)
 , isServer(true)
@@ -30,41 +22,41 @@ RdmaMemoryPool::RdmaMemoryPool(protection_domain_type pd, std::size_t chunk_size
 {
     LOG_DEBUG_MSG("small pool " << small_.chunk_size_ << " or " << small_.chunk_size_);
     auto alloc =
-            std::bind(&RdmaMemoryPool::AllocateRegisteredBlock, this, std::placeholders::_1);
+            std::bind(&rdma_memory_pool::AllocateRegisteredBlock, this, std::placeholders::_1);
     small_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_SMALL_CHUNKS, alloc);
     medium_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_MEDIUM_CHUNKS, alloc);
     large_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_LARGE_CHUNKS, alloc);
 }
 //----------------------------------------------------------------------------
-RdmaMemoryPool::~RdmaMemoryPool()
+rdma_memory_pool::~rdma_memory_pool()
 {
     DeallocateList();
 }
 //----------------------------------------------------------------------------
-void RdmaMemoryPool::setProtectionDomain(protection_domain_type pd)
+void rdma_memory_pool::setProtectionDomain(protection_domain_type pd)
 {
     DeallocateList();
     protection_domain_ = pd;
     pool_container::regionAllocFunction alloc =
-            std::bind(&RdmaMemoryPool::AllocateRegisteredBlock, this, std::placeholders::_1);
+            std::bind(&rdma_memory_pool::AllocateRegisteredBlock, this, std::placeholders::_1);
     small_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_SMALL_CHUNKS, alloc);
     medium_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_MEDIUM_CHUNKS, alloc);
     large_.AllocatePool(RDMA_DEFAULT_MEMORY_POOL_MAX_LARGE_CHUNKS, alloc);
 }
 //----------------------------------------------------------------------------
-char *RdmaMemoryPool::allocate(size_t length)
+char *rdma_memory_pool::allocate(size_t length)
 {
     if (length>large_.chunk_size_) {
         LOG_ERROR_MSG("Chunk pool size exceeded " << length);
         std::terminate();
         throw pinned_memory_exception(std::string(std::string("Chunk pool size exceeded ") + std::to_string(length)).c_str());
     }
-    RdmaMemoryRegion *region = allocateRegion(length);
+    rdma_memory_region *region = allocateRegion(length);
     return static_cast<char*>(region->getAddress());
 }
 
 //----------------------------------------------------------------------------
-bool RdmaMemoryPool::canAllocateRegionUnsafe(size_t length)
+bool rdma_memory_pool::canAllocateRegionUnsafe(size_t length)
 {
     if (length<=small_.chunk_size_) {
         return !small_.free_list_.empty();
@@ -79,9 +71,9 @@ bool RdmaMemoryPool::canAllocateRegionUnsafe(size_t length)
 }
 
 //----------------------------------------------------------------------------
-RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
+rdma_memory_region *rdma_memory_pool::allocateRegion(size_t length)
 {
-    RdmaMemoryRegion *buffer;
+    rdma_memory_region *buffer;
     //
     if (length<=small_.chunk_size_) {
         buffer = small_.pop();
@@ -118,7 +110,7 @@ RdmaMemoryRegion *RdmaMemoryPool::allocateRegion(size_t length)
 }
 
 //----------------------------------------------------------------------------
-void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
+void rdma_memory_pool::deallocate(rdma_memory_region *region)
 {
     // if this region was registered on the fly, then don't return it to the pool
     if (region->isTempRegion() || region->isUserRegion()) {
@@ -150,10 +142,10 @@ void RdmaMemoryPool::deallocate(RdmaMemoryRegion *region)
             << " free (l) "  << decnumber(large_.free_list_.size()) << " used " << decnumber(this->large_.region_use_count_));
 }
 //----------------------------------------------------------------------------
-RdmaMemoryRegionPtr RdmaMemoryPool::AllocateRegisteredBlock(std::size_t length)
+rdma_memory_regionPtr rdma_memory_pool::AllocateRegisteredBlock(std::size_t length)
 {
     LOG_DEBUG_MSG("AllocateRegisteredBlock with this pointer " << hexpointer(this) << " size " << hexlength(length));
-    RdmaMemoryRegionPtr region = std::make_shared<RdmaMemoryRegion>();
+    rdma_memory_regionPtr region = std::make_shared<rdma_memory_region>();
     region->allocate(protection_domain_, length);
     //
     pointer_map_[region->getAddress()] = region.get();
@@ -161,10 +153,10 @@ RdmaMemoryRegionPtr RdmaMemoryPool::AllocateRegisteredBlock(std::size_t length)
 }
 
 //----------------------------------------------------------------------------
-RdmaMemoryRegion* RdmaMemoryPool::AllocateTemporaryBlock(std::size_t length)
+rdma_memory_region* rdma_memory_pool::AllocateTemporaryBlock(std::size_t length)
 {
     LOG_DEBUG_MSG("AllocateTemporaryBlock with this pointer " << hexpointer(this) << " size " << hexlength(length));
-    RdmaMemoryRegion *region = new RdmaMemoryRegion();
+    rdma_memory_region *region = new rdma_memory_region();
     region->setTempRegion();
     region->allocate(protection_domain_, length);
     temp_regions++;
@@ -173,7 +165,7 @@ RdmaMemoryRegion* RdmaMemoryPool::AllocateTemporaryBlock(std::size_t length)
 }
 
 //----------------------------------------------------------------------------
-int RdmaMemoryPool::DeallocateList()
+int rdma_memory_pool::DeallocateList()
 {
     bool ok = true;
     ok = ok && small_.DeallocatePool();

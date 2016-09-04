@@ -16,9 +16,9 @@
 // Includes
 
 #include <iostream>
-#include "RdmaLogging.h"
-#include <RdmaSharedReceiveQueue.h>
-#include <RdmaError.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaSharedReceiveQueue.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
 #include <cstring>
 #include <rdma/rdma_verbs.h>
 
@@ -35,6 +35,7 @@
   };
 */
 
+using namespace hpx::parcelset::policies::verbs;
 namespace bgcios
 {
 
@@ -43,7 +44,7 @@ namespace bgcios
 #define VERBS_EP_RX_CNT         (4096)  // default SRQ size
 #define VERBS_EP_TX_CNT         (4096)  // default send count
 
-RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain)
+RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain)
 {
   _domain = domain;
   _cmId   = cmId;
@@ -57,8 +58,8 @@ RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, RdmaProt
 //  std::cout << "Here 2 with cmId " << _cmId << std::endl;
 
   if (err != 0) {
-     RdmaError e(errno, "rdma_create_srq() failed");
-     LOG_ERROR_MSG("error creating shared receive queue : " << RdmaError::errorString(e.errcode()));
+     rdma_error e(errno, "rdma_create_srq() failed");
+     LOG_ERROR_MSG("error creating shared receive queue : " << rdma_error::error_string(e.errcode()));
      throw e;
    }
   std::cout << "Here 2 with cmId " << _cmId << std::endl;
@@ -73,8 +74,8 @@ RdmaSharedReceiveQueue::~RdmaSharedReceiveQueue()
 //  if (rdma_destroy_srq(_cmId)) {
   rdma_destroy_srq(_cmId);
 
-//    RdmaError e(errno, "rdma_destroy_srq() failed");
-//    LOG_ERROR_MSG("error deleting shared receive queue : " << RdmaError::errorString(e.errcode()));
+//    rdma_error e(errno, "rdma_destroy_srq() failed");
+//    LOG_ERROR_MSG("error deleting shared receive queue : " << rdma_error::error_string(e.errcode()));
 //    throw e;
 //  }
 }

@@ -23,11 +23,12 @@
 
 //! \file  RdmaController.cc
 //! \brief Methods for bgcios::stdio::RdmaController class.
-#include "../include/RdmaController.h"
 
-#include <RdmaError.h>
-#include <RdmaDevice.h>
-#include <RdmaCompletionQueue.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/event_channel.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaController.h>
 //
 #include <boost/lexical_cast.hpp>
 //
@@ -45,8 +46,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "rdma_messages.h"
-#include <plugins/parcelport/verbs/rdmahandler/event_channel.hpp>
 
 namespace hpx {
 namespace parcelset {
@@ -56,6 +55,7 @@ namespace verbs
     event_channel::mutex_type event_channel::_event_mutex;
 }}}}
 
+using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
 const uint64_t LargeRegionSize = 8192;
@@ -92,7 +92,7 @@ int RdmaController::startup() {
   try {
     LOG_DEBUG_MSG("creating InfiniBand device for " << _device << " using interface " << _interface);
     linkDevice = RdmaDevicePtr(new RdmaDevice(_device, _interface));
-  } catch (bgcios::RdmaError& e) {
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error opening InfiniBand device: " << e.what());
     return e.errcode();
   }
@@ -138,7 +138,7 @@ int RdmaController::startup() {
       this->_port = _rdmaListener->getLocalPort();
       LOG_DEBUG_MSG("RdmaServer port changed to " << std::dec << decnumber(this->_port));
     }
-  } catch (bgcios::RdmaError& e) {
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error creating listening RDMA connection: " << e.what());
     return e.errcode();
   }
@@ -148,8 +148,8 @@ int RdmaController::startup() {
 
   // Create a protection domain object.
   try {
-    _protectionDomain = RdmaProtectionDomainPtr(new RdmaProtectionDomain(_rdmaListener->getContext()));
-  } catch (bgcios::RdmaError& e) {
+    _protectionDomain = rdma_protection_domainPtr(new rdma_protection_domain(_rdmaListener->getContext()));
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error allocating protection domain: " << e.what());
     return e.errcode();
   }
@@ -158,13 +158,13 @@ int RdmaController::startup() {
   // Create a completion channel object.
   try {
     _completionChannel = RdmaCompletionChannelPtr(new RdmaCompletionChannel(_rdmaListener->getContext(), false));
-  } catch (bgcios::RdmaError& e) {
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error constructing completion channel: " << e.what());
     return e.errcode();
   }
 
   // Create a memory pool for pinned buffers
-  _memoryPool = std::make_shared < RdmaMemoryPool > (_protectionDomain,
+  _memoryPool = std::make_shared < rdma_memory_pool > (_protectionDomain,
           RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE, RDMA_DEFAULT_CHUNKS_ALLOC, RDMA_MAX_CHUNKS_ALLOC);
 
 #ifdef USE_SHARED_RECEIVE_QUEUE
@@ -176,16 +176,16 @@ int RdmaController::startup() {
   // Listen for connections.
   int err = _rdmaListener->listen(256);
   if (err != 0) {
-    LOG_ERROR_MSG("error listening for new RDMA connections: " << RdmaError::errorString(err));
+    LOG_ERROR_MSG("error listening for new RDMA connections: " << rdma_error::error_string(err));
     return err;
   }
   LOG_DEBUG_MSG("listening for new RDMA connections on fd " << hexnumber(_rdmaListener->getEventChannelFd()));
 
   // Create a large memory region.
-  _largeRegion = RdmaMemoryRegionPtr(new RdmaMemoryRegion());
+  _largeRegion = rdma_memory_regionPtr(new rdma_memory_region());
   err = _largeRegion->allocate(_protectionDomain, LargeRegionSize);
   if (err != 0) {
-    LOG_ERROR_MSG("error allocating large memory region: " << RdmaError::errorString(err));
+    LOG_ERROR_MSG("error allocating large memory region: " << rdma_error::error_string(err));
     return err;
   }
   LOG_DEBUG_MSG("created large memory region with local key " << _largeRegion->getLocalKey());
@@ -198,7 +198,7 @@ int RdmaController::cleanup(void) {
 }
 
 /*---------------------------------------------------------------------------*/
-void RdmaController::freeRegion(RdmaMemoryRegion *region) {
+void RdmaController::freeRegion(rdma_memory_region *region) {
   LOG_ERROR_MSG("Removed region free code, must replace it");
   //  if(!this->_memoryPool->is_from(region)) {
   //    throw std::runtime_error("Trying to delete a meory region we didn't allocate");
@@ -235,7 +235,7 @@ int RdmaController::pollCompletionQueues()
             nc = completionQ->poll_completion(&completion);
             if (nc>0) {
                 if (completion.status != IBV_WC_SUCCESS) {
-                    LOG_ERROR_MSG("Message failed currect receive count is " << client->getNumReceives());
+                    LOG_ERROR_MSG("Message failed current receive count is " << client->getNumReceives());
                     LOG_DEBUG_MSG("pollCompletionQueues - removing wr_id " << hexpointer(completion.wr_id) << " "
                             << RdmaCompletionQueue::wc_opcode_str(completion.opcode));
                     std::terminate();
@@ -328,7 +328,7 @@ void RdmaController::eventChannelHandler(void)
 //          > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
       completionQ = std::make_shared < RdmaCompletionQueue
           > (_rdmaListener->getEventContext(), RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
-    } catch (bgcios::RdmaError& e) {
+    } catch (rdma_error& e) {
       LOG_ERROR_MSG("error creating completion queue: " << e.what());
       return;
     }
@@ -338,7 +338,7 @@ void RdmaController::eventChannelHandler(void)
     try {
       client = std::make_shared < RdmaClient
           > (_rdmaListener->getEventId(), _protectionDomain, completionQ, _memoryPool, _rdmaListener->SRQ());
-    } catch (bgcios::RdmaError& e) {
+    } catch (rdma_error& e) {
       LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
       completionQ.reset();
       return;
@@ -357,7 +357,7 @@ void RdmaController::eventChannelHandler(void)
     // Accept the connection from the new client.
     err = client->accept();
     if (err != 0) {
-      printf("error accepting client connection: %s\n", RdmaError::errorString(err));
+      printf("error accepting client connection: %s\n", rdma_error::error_string(err));
       _clients.erase(client->getQpNum());
 //      _completionChannel->removeCompletionQ(completionQ);
       client->reject(_rdmaListener->getEventId()); // Tell client the bad news
@@ -415,7 +415,7 @@ void RdmaController::eventChannelHandler(void)
     if (err == 0) {
       LOG_CIOS_INFO_MSG(client->getTag() << "disconnected from " << client->getRemoteAddressString());
     } else {
-      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << rdma_error::error_string(err));
     }
 
     // Acknowledge the event (must be done before removing the rdma cm id).
@@ -476,8 +476,8 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_typ
         }
     }
 
-    catch (const RdmaError& e) {
-        LOG_ERROR_MSG("error removing work completions from completion queue: " << RdmaError::errorString(e.errcode()));
+    catch (const rdma_error& e) {
+        LOG_ERROR_MSG("error removing work completions from completion queue: " << rdma_error::error_string(e.errcode()));
     }
 
     return true;
@@ -499,7 +499,7 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
 //      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
     completionQ = std::make_shared < RdmaCompletionQueue >
       (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
-  } catch (bgcios::RdmaError& e) {
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error creating completion queue: " << e.what());
   }
 
@@ -507,7 +507,7 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, u
   try {
     newClient = std::make_shared<RdmaClient>
       (_localAddrString, _localPortString, remoteAddr, remotePort);
-  } catch (bgcios::RdmaError& e) {
+  } catch (rdma_error& e) {
     LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
     completionQ.reset();
     return NULL;
@@ -551,7 +551,7 @@ void RdmaController::removeServerToServerConnection(RdmaClientPtr client)
     if (err == 0) {
       LOG_CIOS_INFO_MSG(client->getTag() << "disconnected from " << client->getRemoteAddressString());
     } else {
-      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << RdmaError::errorString(err));
+      LOG_ERROR_MSG(client->getTag() << "error disconnecting from peer: " << rdma_error::error_string(err));
     }
 
     // Remove connection from map of active connections.

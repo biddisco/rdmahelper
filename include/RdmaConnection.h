@@ -40,12 +40,12 @@
 #define COMMON_RDMACONNECTION_H
 
 // Includes
-#include "RdmaConnectionBase.h"
-#include "RdmaMemoryRegion.h"
-#include "RdmaProtectionDomain.h"
-#include "RdmaCompletionQueue.h"
-#include "RdmaSharedReceiveQueue.h"
-#include "RdmaError.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_region.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnectionBase.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaSharedReceiveQueue.h>
 #include <inttypes.h>
 #include <rdma/rdma_cma.h>
 #include <infiniband/verbs.h>
@@ -55,8 +55,8 @@
 #include <iostream>
 #include <iomanip>
 #include <atomic>
-//
-#include <plugins/parcelport/verbs/rdmahandler/event_channel.hpp>
+
+using namespace hpx::parcelset::policies::verbs;
 
 namespace bgcios
 {
@@ -76,7 +76,7 @@ public:
    //! \param  localPort Local port number string.
    //! \param  remoteAddr Remote address in dotted decimal string format.
    //! \param  remotePort Remote port number string.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaConnection(const std::string localAddr, const std::string localPort, const std::string remoteAddr, const std::string remotePort);
 
@@ -86,9 +86,9 @@ public:
    //! \param  sendCompletionQ Completion queue for send operations.
    //! \param  recvCompletionQ Completion queue for receive operations.
    //! \param  signalSendQueue True to generate completion queue entry for all send queue operations.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   RdmaConnection(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
+   RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
                   RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue = false);
 
    //! \brief  Default destructor.
@@ -114,7 +114,7 @@ public:
    //! \param  localAddr Local IPv4 address of this client (can be NULL).
    //! \param  remoteAddr Remote IPv4 address of server.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    int resolveAddress(struct sockaddr_in *localAddr, struct sockaddr_in *remoteAddr);
 
@@ -173,12 +173,12 @@ public:
    //! \param  region Memory region that contains data to send.
    //! \param  signaled True to set signaled flag so a completion queue entry is generated.
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   uint64_t postSend(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData);
-   uint64_t postSend_xN(RdmaMemoryRegion *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData);
+   uint64_t postSend(rdma_memory_region *region, bool signaled, bool withImmediate, uint32_t immediateData);
+   uint64_t postSend_xN(rdma_memory_region *region[], int N, bool signaled, bool withImmediate, uint32_t immediateData);
 
-   uint64_t postSend_x0(RdmaMemoryRegion *region, bool signaled, bool withImmediate, uint32_t immediateData);
+   uint64_t postSend_x0(rdma_memory_region *region, bool signaled, bool withImmediate, uint32_t immediateData);
 
    //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
    //! \param  reqID is the request ID for the requested operation
@@ -190,7 +190,7 @@ public:
    //! \return error status for the posted operation.
    //!
 
-   uint64_t postRead(RdmaMemoryRegion *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length);
+   uint64_t postRead(rdma_memory_region *localregion, uint32_t remoteKey, const void *remoteAddr, std::size_t length);
 
 
 int
@@ -270,7 +270,7 @@ postRdmaWrite(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
 }
 
 virtual uint64_t
-postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
+postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_sge recv_sge;
@@ -288,7 +288,7 @@ postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=fals
    struct ibv_recv_wr *badRequest;
    int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
    if (err!=0) {
-     throw(RdmaError(err, "postSendNoImmed failed"));
+     throw(rdma_error(err, "postSendNoImmed failed"));
    }
    LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << hexpointer(recv_wr.wr_id)
        << " with Length " << hexlength(length)
@@ -302,9 +302,9 @@ postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=fals
    //! \param  immediateData Immediate data value.
    //! \param  signaled True to set signaled flag so a completion queue entry is generated.
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   uint64_t postSend(RdmaMemoryRegionPtr region, uint32_t immediateData, bool signaled = false)
+   uint64_t postSend(rdma_memory_regionPtr region, uint32_t immediateData, bool signaled = false)
    {
       return postSend(region, signaled, true, immediateData);
    }
@@ -315,9 +315,9 @@ postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=fals
    //! \param  length Length of data to send.
    //! \param  immediateData Immediate data value.
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   uint64_t postSend(RdmaMemoryRegionPtr region, void *address, uint32_t length, uint32_t immediateData);
+   uint64_t postSend(rdma_memory_regionPtr region, void *address, uint32_t length, uint32_t immediateData);
 
 uint64_t postSend(uint32_t regionLocalKey, void *address, uint32_t length, uint64_t refWorkId, uint32_t immediateData)
 {
@@ -340,13 +340,13 @@ uint64_t postSend(uint32_t regionLocalKey, void *address, uint32_t length, uint6
    ++_totalSendPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
    if (err!=0) {
-     throw(RdmaError(err, "postSend failed"));
+     throw(rdma_error(err, "postSend failed"));
    }
    return send_wr.wr_id;
 }
 
 uint64_t
-postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
+postSendNoImmed(rdma_memory_regionPtr region, void *address, uint64_t length)
 {
    struct ibv_send_wr *badRequest;
    // Build scatter/gather element for outbound data.
@@ -369,7 +369,7 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
    ++_totalSendPosted;
    int err = ibv_post_send(_cmId->qp, &send_wr, &badRequest);
    if (err!=0) {
-     throw(RdmaError(err, "postSendNoImmed failed"));
+     throw(rdma_error(err, "postSendNoImmed failed"));
    }
    return send_wr.wr_id;
 }
@@ -379,18 +379,18 @@ postSendNoImmed(RdmaMemoryRegionPtr region, void *address, uint64_t length)
    //! \param  remoteAddr Address of remote memory region.
    //! \param  remoteKey Key of remote memory region.
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   uint64_t postRdmaWrite(RdmaMemoryRegionPtr region, uint64_t remoteAddr, uint32_t remoteKey);
+   uint64_t postRdmaWrite(rdma_memory_regionPtr region, uint64_t remoteAddr, uint32_t remoteKey);
 
    //! \brief  Post a rdma read operation from a remote memory region to the specified memory region.
    //! \param  region Memory region to put received data.
    //! \param  remoteAddr Address of remote memory region.
    //! \param  remoteKey Key of remote memory region.
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   uint64_t postRdmaRead(RdmaMemoryRegionPtr region, uint64_t remoteAddr, uint32_t remoteKey);
+   uint64_t postRdmaRead(rdma_memory_regionPtr region, uint64_t remoteAddr, uint32_t remoteKey);
 */
 
 /*
@@ -398,7 +398,7 @@ int
 postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
                                              uint32_t localKey,  uint64_t localAddr,
                                              ssize_t length,
-                                             RdmaMemoryRegionPtr regionSend, void *addressSend, uint64_t lengthSend)
+                                             rdma_memory_regionPtr regionSend, void *addressSend, uint64_t lengthSend)
 {
    // Build scatter/gather element for inbound message.
    struct ibv_send_wr *badRequest;
@@ -449,10 +449,10 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    //! \param  address is the Address in the local memory region
    //! \param  length is the length of the memo
    //! \return Work request id for the posted operation.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
   uint64_t
-  postRecvAddressAsID(RdmaMemoryRegionPtr region, uint64_t address, uint32_t length)
+  postRecvAddressAsID(rdma_memory_regionPtr region, uint64_t address, uint32_t length)
   {
      // Build scatter/gather element for inbound message.
      struct ibv_sge recv_sge;
@@ -471,7 +471,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
      struct ibv_recv_wr *badRequest;
      int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
      if (err!=0) {
-       throw(RdmaError(err, "postSendNoImmed failed"));
+       throw(rdma_error(err, "postSendNoImmed failed"));
      }
      return recv_wr.wr_id;
   }
@@ -481,7 +481,7 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    //! \param  region Memory region to put received data.
    //! \return 0 when successful, errno when unsuccessful.
 
-   int postRecv(RdmaMemoryRegionPtr region);
+   int postRecv(rdma_memory_regionPtr region);
 */
   //! \brief  Get the rdma connection management identifier for the connection.
    //! \return Pointer to rdma cm identifier structure.
@@ -491,7 +491,9 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    //! \brief  Get the queue pair number for the connection.
    //! \return Queue pair number.
 
-   uint32_t getQpNum(void) const { return _cmId->qp->qp_num; }
+   uint32_t getQpNum(void) const {
+       return _cmId->qp->qp_num;
+   }
 
    //! \brief  Get the InfiniBand device context for the connection.
    //! \return Pointer to InfiniBand device context structure.
@@ -590,13 +592,13 @@ postRdmaWriteWithAck(uint64_t reqID, uint32_t remoteKey, uint64_t remoteAddr,
    //! \brief  Create a shared receive queue :
    //! this should only be called by a server. Client objects owned by a server will
    //! have it passed into makepeer
-   int create_srq(RdmaProtectionDomainPtr domain);
+   int create_srq(rdma_protection_domainPtr domain);
 
-   RdmaSharedReceiveQueuePtr SRQ() {
+   inline RdmaSharedReceiveQueuePtr SRQ() {
      return _srq;
    }
 
-   virtual struct ibv_srq *get_SRQ() {
+   virtual inline struct ibv_srq *get_SRQ() {
      if (_srq==NULL) return NULL;
      return _srq->get_SRQ();
    }
@@ -613,7 +615,7 @@ protected:
 
    //! \brief  Create rdma event channel and rdma connection management id.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    void createId(void);
 
@@ -624,9 +626,9 @@ protected:
    //! \param  maxWorkRequests Maximum number of work requests that can be posted to queue pair.
    //! \param  signalSendQueue True to generate completion queue entry for all send queue operations.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   void createQp(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
+   void createQp(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
                  uint32_t maxWorkRequests, bool signalSendQueue);
 
    RdmaSharedReceiveQueuePtr _srq;
@@ -638,7 +640,7 @@ protected:
    //! \brief  Post a work request to the send queue.
    //! \param  request Pointer to send work request.
    //! \return Work request identifier.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    uint64_t postSendQ(struct ibv_send_wr *request);
 

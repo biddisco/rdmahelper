@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -40,9 +40,9 @@
 #define COMMON_RDMACLIENT_H
 
 // Includes
-#include "RdmaConnection.h"
-#include "RdmaMemoryRegion.h"
-#include "RdmaMemoryPool.h"
+#include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnection.h>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_pool.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_region.hpp>
 #include <memory>
 #include <queue>
 
@@ -68,7 +68,7 @@ public:
    //! \param  localPort Local port number string.
    //! \param  remoteAddr Remote address in dotted decimal string format.
    //! \param  remotePort Remote port number string.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
    RdmaClient(const std::string localAddr, const std::string localPort, const std::string remoteAddr, const std::string remotePort) :
       RdmaConnection(localAddr, localPort, remoteAddr, remotePort)
@@ -83,10 +83,10 @@ public:
    //! \param  cmId Rdma connection management id to use for new client.
    //! \param  domain Protection domain for new client.
    //! \param  completionQ Completion queue for both send and receive operations.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   RdmaClient(struct rdma_cm_id *cmId, RdmaProtectionDomainPtr domain,
-       RdmaCompletionQueuePtr completionQ, RdmaMemoryPoolPtr pool,
+   RdmaClient(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain,
+       RdmaCompletionQueuePtr completionQ, rdma_memory_poolPtr pool,
        RdmaSharedReceiveQueuePtr SRQ) :
       RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
    {
@@ -108,7 +108,7 @@ public:
    //! \param  completionQ Completion queue for both send and receive operations.
    //! \return 0 when successful, errno when unsuccessful.
 
-   int makePeer(RdmaProtectionDomainPtr domain, RdmaCompletionQueuePtr completionQ);
+   int makePeer(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr completionQ);
 
    //! \brief  Get completion queue used for both send and receive operations.
    //! \return Completion queue pointer.
@@ -117,7 +117,7 @@ public:
 
    // overridden to monitor outstanding receive count
    virtual uint64_t
-   postRecvRegionAsID(RdmaMemoryRegion *region, uint32_t length, bool expected=false)
+   postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false)
    {
      uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, length, expected);
      this->pushReceive();
@@ -129,21 +129,21 @@ private:
    //! \brief  Create memory regions for inbound and outbound messages.
    //! \param  domain Protection domain for client.
    //! \return Nothing.
-   //! \throws RdmaError.
+   //! \throws rdma_error.
 
-   void createRegions(RdmaProtectionDomainPtr domain);
-
-   //! Memory region for inbound messages.
-   RdmaProtectionDomainPtr _domain;
+   void createRegions(rdma_protection_domainPtr domain);
 
    //! Memory region for inbound messages.
-   RdmaMemoryRegionPtr _inMessageRegion;
+   rdma_protection_domainPtr _domain;
+
+   //! Memory region for inbound messages.
+   rdma_memory_regionPtr _inMessageRegion;
 
    //! Memory region for outbound messages.
-   RdmaMemoryRegionPtr _outMessageRegion;
+   rdma_memory_regionPtr _outMessageRegion;
 
    //! Memory region for Auxilliary outbound messages.
-   RdmaMemoryRegionPtr _outMessageRegionAux;
+   rdma_memory_regionPtr _outMessageRegionAux;
 
    //! Completion queue.
    RdmaCompletionQueuePtr _completionQ;

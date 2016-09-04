@@ -23,7 +23,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 #include_directories(${HPX_INCLUDE_DIRS})
 #message("The HPX include dir is ${HPX_INCLUDE_DIRS}")
 
-##------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Logging
 #------------------------------------------------------------------------------
 option(RDMAHELPER_WITH_LOGGING "Enable logging" ON)
@@ -98,29 +98,19 @@ include_directories(
 #------------------------------------------------------------------------------
 # library sources
 #------------------------------------------------------------------------------
-if (NOT BGQ)
-    set(RDMAHELPER_SRC
-      src/RdmaLogging.cpp
-      src/RdmaMemoryRegion.cpp
-      src/RdmaDevice.cpp
-      src/RdmaCompletionChannel.cpp
-      src/RdmaCompletionQueue.cpp
-      src/RdmaProtectionDomain.cpp
-      src/RdmaConnection.cpp
-      src/RdmaClient.cpp
-      src/RdmaServer.cpp
-      src/RdmaSharedReceiveQueue.cpp
-      src/RdmaMemoryPool.cpp 
-      src/RdmaController.cpp
-    )
-else()
-    set(RDMAHELPER_SRC
-      src/RdmaLogging.cpp
-      src/RdmaMemoryPool.cpp 
-      src/CNKMemoryRegion.cpp
-      src/CNKClient.cpp
-    )
-endif()
+set(RDMAHELPER_SRC
+    "src/rdma_memory_pool.cpp"
+    "src/rdma_memory_region.cpp"
+    "src/rdma_protection_domain.cpp"
+    "src/RdmaDevice.cpp"
+    "src/RdmaCompletionChannel.cpp"
+    "src/RdmaCompletionQueue.cpp"
+    "src/RdmaConnection.cpp"
+    "src/RdmaClient.cpp"
+    "src/RdmaServer.cpp"
+    "src/RdmaSharedReceiveQueue.cpp"
+    "src/RdmaController.cpp"
+)
  
 set(RDMAHELPER_includes
   ${CMAKE_CURRENT_SOURCE_DIR}/include
