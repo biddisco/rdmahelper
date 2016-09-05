@@ -46,7 +46,7 @@ using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
 //rdma_protection_domainPtr pinned_allocator_malloc_free::_protectionDomain;
-//rdma_memory_regionPtr     pinned_allocator_malloc_free::_region;
+//rdma_memory_region_ptr     pinned_allocator_malloc_free::_region;
 //std::mutex              pinned_allocator_malloc_free::_pd_mutex;
 
 //LOG_DECLARE_FILE("cios.common");
@@ -56,13 +56,13 @@ RdmaClient::~RdmaClient()
   LOG_DEBUG_MSG("Client destructor being called");
    // Destroy memory region for inbound messages.
    if (_inMessageRegion != NULL) {
-      LOG_CIOS_DEBUG_MSG(_tag << "destroying inbound memory region");
+      LOG_DEBUG_MSG(_tag << "destroying inbound memory region");
       _inMessageRegion.reset();
    }
 
    // Destroy memory region for outbound messages.
    if (_outMessageRegion != NULL) {
-      LOG_CIOS_DEBUG_MSG(_tag << "destroying outbound memory region");
+      LOG_DEBUG_MSG(_tag << "destroying outbound memory region");
       _outMessageRegion.reset();
    }
 }
@@ -71,7 +71,7 @@ void
 RdmaClient::createRegions(rdma_protection_domainPtr domain)
 {
    // Create a memory region for inbound messages.
-   _inMessageRegion = rdma_memory_regionPtr(new rdma_memory_region());
+   _inMessageRegion = rdma_memory_region_ptr(new rdma_memory_region());
    int err = _inMessageRegion->allocate64kB(domain);
 //   int err = _inMessageRegion->allocate(domain, 4096);
    if (err != 0) {
@@ -81,7 +81,7 @@ RdmaClient::createRegions(rdma_protection_domainPtr domain)
    }
 
    // Create a memory region for outbound messages.
-   _outMessageRegion = rdma_memory_regionPtr(new rdma_memory_region());
+   _outMessageRegion = rdma_memory_region_ptr(new rdma_memory_region());
    err = _outMessageRegion->allocate64kB(domain);
    if (err != 0) {
       rdma_error e(err, "allocating outbound memory region failed");
@@ -96,7 +96,7 @@ void
 RdmaClient::createRegionAuxOutbound(rdma_protection_domainPtr domain)
 {
    // Create auxilliary memory region for outbound messages.
-   _outMessageRegionAux = rdma_memory_regionPtr(new rdma_memory_region());
+   _outMessageRegionAux = rdma_memory_region_ptr(new rdma_memory_region());
    int err = _outMessageRegionAux->allocate(domain, bgcios::SmallMessageRegionSize);
    if (err != 0) {
       rdma_error e(err, "allocating outbound memory region failed");

@@ -137,13 +137,13 @@ private:
    rdma_protection_domainPtr _domain;
 
    //! Memory region for inbound messages.
-   rdma_memory_regionPtr _inMessageRegion;
+   rdma_memory_region_ptr _inMessageRegion;
 
    //! Memory region for outbound messages.
-   rdma_memory_regionPtr _outMessageRegion;
+   rdma_memory_region_ptr _outMessageRegion;
 
    //! Memory region for Auxilliary outbound messages.
-   rdma_memory_regionPtr _outMessageRegionAux;
+   rdma_memory_region_ptr _outMessageRegionAux;
 
    //! Completion queue.
    RdmaCompletionQueuePtr _completionQ;

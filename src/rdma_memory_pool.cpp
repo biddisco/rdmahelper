@@ -142,10 +142,10 @@ void rdma_memory_pool::deallocate(rdma_memory_region *region)
             << " free (l) "  << decnumber(large_.free_list_.size()) << " used " << decnumber(this->large_.region_use_count_));
 }
 //----------------------------------------------------------------------------
-rdma_memory_regionPtr rdma_memory_pool::AllocateRegisteredBlock(std::size_t length)
+rdma_memory_region_ptr rdma_memory_pool::AllocateRegisteredBlock(std::size_t length)
 {
     LOG_DEBUG_MSG("AllocateRegisteredBlock with this pointer " << hexpointer(this) << " size " << hexlength(length));
-    rdma_memory_regionPtr region = std::make_shared<rdma_memory_region>();
+    rdma_memory_region_ptr region = std::make_shared<rdma_memory_region>();
     region->allocate(protection_domain_, length);
     //
     pointer_map_[region->getAddress()] = region.get();

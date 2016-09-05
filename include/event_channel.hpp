@@ -25,19 +25,24 @@ namespace verbs {
 
     struct event_channel {
         //
-        typedef hpx::lcos::local::spinlock mutex_type;
+        typedef hpx::lcos::local::spinlock   mutex_type;
         typedef std::unique_lock<mutex_type> unique_lock;
-        typedef hpx::lcos::local::condition_variable_any condition_type;
         //
-        static mutex_type _event_mutex;
+        static mutex_type event_mutex_;
 
-        /*---------------------------------------------------------------------------*/
+        // ----------------------------------------------------------------------------
+        enum event_ack_type {
+            do_ack_event = true,
+            no_ack_event = false
+        };
+
+        // ----------------------------------------------------------------------------
         template<typename Func>
         static int poll_event_channel(int fd, Func &&f)
         {
             // there is no need for more than one thread to poll the event channel
             // so try the lock and if someone has it, leave immediately
-            unique_lock lock(_event_mutex, std::try_to_lock);
+            unique_lock lock(event_mutex_, std::try_to_lock);
             if (!lock.owns_lock()) {
                 return 0;
             }
@@ -79,13 +84,13 @@ namespace verbs {
             return 1;
         }
 
-        /*---------------------------------------------------------------------------*/
+        // ----------------------------------------------------------------------------
         // If the expected event is received, it is acked, otherwise the
         // event is returned in the event param (but it turns out we must ack
         // even the wrong events so this is done too)
         // Communication event details are returned in the rdma_cm_event structure.
         // It is allocated by the rdma_cm and released by the rdma_ack_cm_event routine.
-        static int get_event(struct rdma_event_channel *channel,
+        static int get_event(struct rdma_event_channel *channel, event_ack_type ack,
             rdma_cm_event_type event, struct rdma_cm_event *&cm_event)
         {
             cm_event = NULL;
@@ -100,18 +105,22 @@ namespace verbs {
                 return -1;
             }
 
-            if (cm_event->event != event) {
-                LOG_ERROR_MSG(" mismatch " << rdma_event_str(cm_event->event)
-                    << " not " << rdma_event_str(event));
-                ackEvent(cm_event);
-                return -1;
+            if (ack) {
+                // we have to ack events, even when they are not the ones we wanted
+                if (cm_event->event != event) {
+                    LOG_ERROR_MSG(" mismatch " << rdma_event_str(cm_event->event)
+                        << " not " << rdma_event_str(event));
+                    ack_event(cm_event);
+                    return -1;
+                }
+                // Acknowledge the event.
+                return ack_event(cm_event);
             }
-            // Acknowledge the event.
-            return ackEvent(cm_event);
+            return 0;
         }
 
-        /*---------------------------------------------------------------------------*/
-        static int ackEvent(struct rdma_cm_event *cm_event)
+        // ----------------------------------------------------------------------------
+        static int ack_event(struct rdma_cm_event *cm_event)
         {
             if (cm_event == nullptr) {
                 LOG_ERROR_MSG("NULL rdma cm event : cannot ack");
@@ -128,16 +137,11 @@ namespace verbs {
                     << ": " << rdma_error::error_string(err));
                 return err;
             }
-
             return 0;
         }
 
-
     };
 
-}
-}
-}
-}
+}}}}
 
 #endif

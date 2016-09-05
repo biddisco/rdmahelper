@@ -65,7 +65,7 @@ rdma_protection_domain::rdma_protection_domain(struct ibv_context *context)
       LOG_ERROR_MSG("error allocating protection domain");
       throw e;
    }
-   LOG_CIOS_DEBUG_MSG("allocated protection domain " << _protectionDomain->handle);
+   LOG_DEBUG_MSG("allocated protection domain " << _protectionDomain->handle);
 }
 
 rdma_protection_domain::~rdma_protection_domain()
@@ -75,7 +75,7 @@ rdma_protection_domain::~rdma_protection_domain()
       int err = ibv_dealloc_pd(_protectionDomain);
       if (err == 0) {
          _protectionDomain = NULL;
-         LOG_CIOS_DEBUG_MSG("deallocated protection domain " << handle);
+         LOG_DEBUG_MSG("deallocated protection domain " << handle);
       }
       else {
          LOG_ERROR_MSG("error deallocating protection domain " << handle << ": " <<  rdma_error::error_string(err));

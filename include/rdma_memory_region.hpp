@@ -1,196 +1,200 @@
-// Copyright (c) 2014-2015 John Biddiscombe
-// Copyright (c) 2011,2012 IBM Corp.
+//  Copyright (c) 2015-2016 John Biddiscombe
 //
-// ================================================================
-// Portions of this code taken from IBM BlueGene-Q source
-//
-// This software is available to you under the
-// Eclipse Public License (EPL).
-//
-// Please refer to the file "eclipse-1.0.txt"
-// ================================================================
-//
-/* begin_generated_IBM_copyright_prolog                             */
-/*                                                                  */
-/* This is an automatically generated copyright prolog.             */
-/* After initializing,  DO NOT MODIFY OR MOVE                       */
-/* ================================================================ */
-/*                                                                  */
-/* Licensed Materials - Property of IBM                             */
-/*                                                                  */
-/* Blue Gene/Q                                                      */
-/*                                                                  */
-/* (C) Copyright IBM Corp.  2011, 2012                              */
-/*                                                                  */
-/* US Government Users Restricted Rights -                          */
-/* Use, duplication or disclosure restricted                        */
-/* by GSA ADP Schedule Contract with IBM Corp.                      */
-/*                                                                  */
-/* This software is available to you under the                      */
-/* Eclipse Public License (EPL).                                    */
-/*                                                                  */
-/* ================================================================ */
-/*                                                                  */
-/* end_generated_IBM_copyright_prolog                               */
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-//! \file  rdma_memory_region.h
-//! \brief Declaration and inline methods for bgcios::rdma_memory_region class.
-
-#ifndef COMMON_RDMAMEMORYREGION_H
-#define COMMON_RDMAMEMORYREGION_H
+#ifndef HPX_PARCELSET_POLICIES_VERBS_MEMORY_REGION_HPP
+#define HPX_PARCELSET_POLICIES_VERBS_MEMORY_REGION_HPP
 
 // Includes
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
 #include <infiniband/verbs.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <memory>
 
+namespace hpx {
+namespace parcelset {
+namespace policies {
+namespace verbs {
 
-namespace bgcios
-{
-
-// Help for lame declaration for ibv_access_flags
-const int _IBV_ACCESS_LOCAL_WRITE = IBV_ACCESS_LOCAL_WRITE;
-const int _IBV_ACCESS_REMOTE_WRITE = IBV_ACCESS_REMOTE_WRITE;
-const int _IBV_ACCESS_REMOTE_READ = IBV_ACCESS_REMOTE_READ;
-const int _IBV_ACCESS_REMOTE_ATOMIC = IBV_ACCESS_REMOTE_ATOMIC;
-const int _IBV_ACCESS_MW_BIND = IBV_ACCESS_MW_BIND;
-
-//! \brief Memory region for RDMA operations.
-
-class rdma_memory_region
-{
-public:
-
-    //! \brief  Default constructor.
-
-    rdma_memory_region()
-{
-        _region        = NULL;
-        _messageLength = 0;
-        _flags         = 0;
-}
-
-    rdma_memory_region(struct ibv_mr *region, uint32_t messageLength)
+    class rdma_memory_region
     {
-        _region        = region;
-        _messageLength = messageLength;
-        _flags         = 0;
-    }
+    public:
 
-    // create a memory region object by registering an existing address buffer
-    rdma_memory_region(rdma_protection_domainPtr pd, const void *buffer, const uint64_t length);
+        rdma_memory_region()
+        {
+            region_     = NULL;
+            used_space_ = 0;
+            flags_      = 0;
+        }
 
-    ~rdma_memory_region()
-    {
-        release();
-    }
+        rdma_memory_region(struct ibv_mr *region, uint32_t messageLength)
+        {
+            region_     = region;
+            used_space_ = messageLength;
+            flags_      = 0;
+        }
 
-    // overload operator->
-    inline unsigned char* operator->() const
-    {
-        return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
-    }
+        // create a memory region object by registering an existing address buffer
+        rdma_memory_region(bgcios::rdma_protection_domainPtr pd,
+            const void *buffer, const uint64_t length)
+        {
+            used_space_ = length;
+            flags_      = BLOCK_USER;
 
-    // overload operator*
-    inline unsigned char* operator*() const
-    {
-        return _region != NULL ? (unsigned char*)(_region->addr) : NULL;
-    }
+            region_ = ibv_reg_mr(
+                pd->getDomain(),
+                const_cast<void*>(buffer), used_space_,
+                IBV_ACCESS_LOCAL_WRITE |
+                IBV_ACCESS_REMOTE_WRITE |
+                IBV_ACCESS_REMOTE_READ);
 
-    //! \brief  Check if memory region has been allocated.
-    //! \return True if memory region is allocated, otherwise false.
+            if (region_ == NULL) {
+                int err = errno;
+                LOG_ERROR_MSG(
+                    "error registering user mem ibv_reg_mr " << hexpointer(buffer) << " "
+                    << hexlength(length) << " error/message: " << err << "/"
+                    << rdma_error::error_string(err));
+            }
+            else {
+                LOG_DEBUG_MSG(
+                    "OK registering memory =" << hexpointer(buffer) << " : "
+                    << hexpointer(_region->addr) << " length " << hexlength(length));
+            }
 
-    inline bool isAllocated(void) const { return _region != NULL ? true : false; }
+        }
 
-    //! \brief  Allocate and register a memory region.
-    //! \param  pd Protection domain for memory region.
-    //! \param  length Length of the memory region.
-    //! \return 0 when successful, errno when unsuccessful.
+        ~rdma_memory_region()
+        {
+            release();
+        }
 
-    int allocate(rdma_protection_domainPtr pd, size_t length);
+        // overload operator->
+        inline unsigned char* operator->() const
+        {
+            return region_ != NULL ? (unsigned char*) (region_->addr) : NULL;
+        }
 
-    //! \brief  Allocate and register a memory region from the bgvrnic device
-    //! \param  pd Protection domain for memory region.
-    //! \param  length Length of the memory region.
-    //! \return 0 when successful, errno when unsuccessful.
+        // overload operator*
+        inline unsigned char* operator*() const
+        {
+            return region_ != NULL ? (unsigned char*) (region_->addr) : NULL;
+        }
 
-    //! \brief  Allocate and register a 64KB memory region.
-    //! \param  pd Protection domain for memory region.
-    //! \return 0 when successful, errno when unsuccessful.
-    int allocate64kB(rdma_protection_domainPtr pd);
+        //! \brief  Check if memory region has been allocated.
+        //! \return True if memory region is allocated, otherwise false.
 
-    //! \brief  Deregister and free the memory region.
-    //! \return 0 when successful, errno when unsuccessful.
+        inline bool isAllocated(void) const {
+            return region_ != NULL ? true : false;
+        }
 
-    int release(void);
+        //! \brief  Allocate and register a memory region.
+        //! \param  pd Protection domain for memory region.
+        //! \param  length Length of the memory region.
+        //! \return 0 when successful, errno when unsuccessful.
 
-    //! \brief  Get the address of the memory region.
-    //! \return Address value.
+        int allocate(bgcios::rdma_protection_domainPtr pd, size_t length);
 
-    inline void *getAddress(void) const { return _region->addr; }
+        //! \brief  Allocate and register a memory region from the bgvrnic device
+        //! \param  pd Protection domain for memory region.
+        //! \param  length Length of the memory region.
+        //! \return 0 when successful, errno when unsuccessful.
 
-    //! \brief  Get the length of the memory region.
-    //! \return Length value.
+        //! \brief  Allocate and register a 64KB memory region.
+        //! \param  pd Protection domain for memory region.
+        //! \return 0 when successful, errno when unsuccessful.
+        int allocate64kB(bgcios::rdma_protection_domainPtr pd);
 
-    inline uint32_t getLength(void) const { return (uint32_t)_region->length; }
+        //! \brief  Deregister and free the memory region.
+        //! \return 0 when successful, errno when unsuccessful.
 
-    //! \brief  Get the local key of the memory region.
-    //! \return Local key value.
+        int release(void);
 
-    inline uint32_t getLocalKey(void) const { return _region->lkey; }
+        //! \brief  Get the address of the memory region.
+        //! \return Address value.
 
-    //! \brief  Get the remote key of the memory region.
-    //! \return Remote key value.
+        inline void *getAddress(void) const {
+            return region_->addr;
+        }
 
-    inline uint32_t getRemoteKey(void) const { return _region->rkey; }
+        //! \brief  Get the length of the memory region.
+        //! \return Length value.
 
-    //! \brief  Set the length of a message in the memory region.
-    //! \param  length New message length value.
-    //! \return Nothing.
+        inline uint32_t getLength(void) const {
+            return (uint32_t) region_->length;
+        }
 
-    inline void setMessageLength(uint32_t length) { _messageLength = length; }
+        //! \brief  Get the local key of the memory region.
+        //! \return Local key value.
 
-    //! \brief  Get the length of a message in the memory region.
-    //! \return Message length value.
+        inline uint32_t getLocalKey(void) const {
+            return region_->lkey;
+        }
 
-    inline uint32_t getMessageLength(void) const { return _messageLength; }
+        //! \brief  Get the remote key of the memory region.
+        //! \return Remote key value.
 
-    //! \brief  Return indicator if a message is ready.
-    //! \return True if a message is ready, otherwise false.
+        inline uint32_t getRemoteKey(void) const {
+            return region_->rkey;
+        }
 
-    inline bool isMessageReady(void) const { return _messageLength > 0 ? true : false; }
+        //! \brief  Set the length of a message in the memory region.
+        //! \param  length New message length value.
+        //! \return Nothing.
 
-    enum {
-        BLOCK_USER = 1,
-        BLOCK_TEMP = 2,
+        inline void setMessageLength(uint32_t length) {
+            used_space_ = length;
+        }
+
+        //! \brief  Get the length of a message in the memory region.
+        //! \return Message length value.
+
+        inline uint32_t getMessageLength(void) const {
+            return used_space_;
+        }
+
+        //! \brief  Return indicator if a message is ready.
+        //! \return True if a message is ready, otherwise false.
+
+        inline bool isMessageReady(void) const {
+            return used_space_ > 0 ? true : false;
+        }
+
+        enum {
+            BLOCK_USER = 1,
+            BLOCK_TEMP = 2,
+        };
+
+        //! Check is this region was constructed from user allocated memory
+        inline bool isUserRegion() {
+            return (flags_ & BLOCK_USER) == BLOCK_USER;
+        }
+        inline bool isTempRegion() {
+            return (flags_ & BLOCK_TEMP) == BLOCK_TEMP;
+        }
+        inline void setTempRegion() {
+            flags_ |= BLOCK_TEMP;
+        }
+
+    private:
+
+        //! Memory region.
+        struct ibv_mr *region_;
+
+        //! flags to control lifetime of blocks
+        int flags_;
+
+        //! Length of a message in the memory region.
+        uint32_t used_space_;
+
     };
 
-    //! Check is this region was constructed from user allocated memory
-    inline bool isUserRegion() { return (_flags & BLOCK_USER) == BLOCK_USER; }
-    inline bool isTempRegion() { return (_flags & BLOCK_TEMP) == BLOCK_TEMP; }
-    inline void setTempRegion() { _flags |= BLOCK_TEMP; }
+    // Smart pointer for rdma_memory_region object.
+    typedef std::shared_ptr<rdma_memory_region> rdma_memory_region_ptr;
 
-private:
-
-    //! Memory region.
-    struct ibv_mr *_region;
-
-    //! flags to control lifetime of blocks
-    int _flags;
-
-    //! Length of a message in the memory region.
-    uint32_t _messageLength;
-
-};
-
-//! Smart pointer for rdma_memory_region object.
-typedef std::shared_ptr<rdma_memory_region> rdma_memory_regionPtr;
-
-
-} // namespace bgcios
+}}}}
 
 #endif // COMMON_RDMAMEMORYREGION_H

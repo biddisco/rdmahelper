@@ -45,7 +45,9 @@
 #include <functional>
 #include <map>
 #include <atomic>
-
+//
+using namespace hpx::parcelset::policies::verbs;
+//
 namespace bgcios
 {
 
@@ -83,9 +85,12 @@ public:
 
     bool isTerminated() { return (_clients.size()==0); }
 
-    typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr client)> ConnectionFunction;
-    typedef std::function<int(RdmaClientPtr client)> DisconnectionFunction;
-    typedef std::function<int(struct sockaddr_in *, struct sockaddr_in *)> ConnectRequestFunction;
+    typedef std::function<int(struct sockaddr_in *, struct sockaddr_in *)>
+        ConnectRequestFunction;
+    typedef std::function<int(std::pair<uint32_t,uint64_t>, RdmaClientPtr)>
+        ConnectionFunction;
+    typedef std::function<int(RdmaClientPtr client)>
+        DisconnectionFunction;
 
     // Set a callback which will be called immediately after
     // RDMA_CM_EVENT_CONNECT_REQUEST has been received. This can be useful to
@@ -110,7 +115,6 @@ public:
 
     int eventMonitor(int Nevents);
     int pollCompletionQueues();
-    int pollEventChannel();
 
     //! Listener for RDMA connections.
     bgcios::RdmaServerPtr getServer() { return this->_rdmaListener; }
@@ -181,7 +185,7 @@ private:
         map_read_lock_type;
 
     //! Large memory region for transferring data (used for both inbound and outbound data).
-    bgcios::rdma_memory_regionPtr _largeRegion;
+    rdma_memory_region_ptr _largeRegion;
 
     rdma_memory_poolPtr _memoryPool;
 

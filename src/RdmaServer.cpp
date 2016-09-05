@@ -74,7 +74,7 @@ RdmaServer::bind(in_addr_t addr, in_port_t port)
    _localAddress.sin_addr.s_addr = addr;
 #ifdef PORT_REMAP
    _localAddress.sin_port = htons(port);
-   LOG_CIOS_DEBUG_MSG(_tag << "port remapping using " << _localAddress.sin_port << " instead of " << port);
+   LOG_DEBUG_MSG(_tag << "port remapping using " << _localAddress.sin_port << " instead of " << port);
 #else
    _localAddress.sin_port = port;
 #endif
@@ -88,14 +88,14 @@ RdmaServer::bind(in_addr_t addr, in_port_t port)
    }
    if (port==0) {
      uint16_t port = ntohs(rdma_get_src_port(_cmId));
-     LOG_CIOS_DEBUG_MSG(_tag << "Actual port selected by rdmacm is " << std::dec << port);
+     LOG_DEBUG_MSG(_tag << "Actual port selected by rdmacm is " << std::dec << port);
      // _localAddress.sin_port = port;
      // Generate an unique tag for trace points.
      std::ostringstream tag;
      tag << "[CM " << port << "] ";
      this->setTag(tag.str());
    }
-   LOG_CIOS_DEBUG_MSG(_tag << "bound rdma cm id to address " << addressToString(&_localAddress));
+   LOG_DEBUG_MSG(_tag << "bound rdma cm id to address " << addressToString(&_localAddress));
    return 0;
 }
 
@@ -109,7 +109,7 @@ RdmaServer::listen(int backlog)
       LOG_ERROR_MSG(_tag << "error listening for connections: " << rdma_error::error_string(err));
       return err;
    }
-   LOG_CIOS_DEBUG_MSG(_tag << "listening for connections with backlog " << backlog);
+   LOG_DEBUG_MSG(_tag << "listening for connections with backlog " << backlog);
    return 0;
 }
 

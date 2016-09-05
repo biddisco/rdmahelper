@@ -62,6 +62,9 @@
 # define RDMA_MAX_PREPOSTS HPX_PARCELPORT_VERBS_MAX_PREPOSTS
 #endif
 
+using namespace bgcios;
+using namespace hpx::parcelset::policies::verbs;
+
 // -------------------------
 // utility exception class
 // -------------------------
@@ -100,7 +103,7 @@ namespace hpx { namespace traits
 // ---------------------------------------------------------------------------
 struct pool_container
 {
-    typedef std::function<rdma_memory_regionPtr(std::size_t)> regionAllocFunction;
+    typedef std::function<rdma_memory_region_ptr(std::size_t)> regionAllocFunction;
 #ifdef RDMA_HANDLER_HAVE_HPX
     typedef hpx::lcos::local::spinlock                mutex_type;
     typedef std::lock_guard<mutex_type>               scoped_lock;
@@ -127,7 +130,7 @@ struct pool_container
         //
         for (std::size_t i=0; i<_num_chunks; i++) {
             LOG_DEBUG_MSG("Allocate Block " << i << " of size " << hexlength(chunk_size_));
-            rdma_memory_regionPtr region = f(chunk_size_);
+            rdma_memory_region_ptr region = f(chunk_size_);
             if (region!=nullptr) {
                 block_list_[region.get()] = region;
                 push(region.get());
@@ -226,7 +229,7 @@ struct pool_container
 #endif
     mutex_type                      memBuffer_mutex_;
     condition_type                  memBuffer_cond_;
-    std::unordered_map<rdma_memory_region*, rdma_memory_regionPtr> block_list_;
+    std::unordered_map<rdma_memory_region*, rdma_memory_region_ptr> block_list_;
 };
 
 // ---------------------------------------------------------------------------
@@ -266,7 +269,7 @@ struct rdma_memory_pool : boost::noncopyable
     int   DeallocateList();
     int   DeallocateListBase();
 
-    rdma_memory_regionPtr AllocateRegisteredBlock(std::size_t length);
+    rdma_memory_region_ptr AllocateRegisteredBlock(std::size_t length);
     rdma_memory_region   *AllocateTemporaryBlock(std::size_t length);
 
     // -------------------------

@@ -93,7 +93,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
       rdma_error e(ENODEV, what.str());
       throw e;
    }
-   LOG_CIOS_DEBUG_MSG("found InfiniBand device " << getDeviceName());
+   LOG_DEBUG_MSG("found InfiniBand device " << getDeviceName());
 
   _myInterface   = NULL;
   _interfaceList = NULL;
@@ -122,7 +122,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
       rdma_error e(ENOENT, what.str());
       throw e;
    }
-   LOG_CIOS_DEBUG_MSG("found network interface " << getInterfaceName());
+   LOG_DEBUG_MSG("found network interface " << getInterfaceName());
 }
 
 }

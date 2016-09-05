@@ -64,7 +64,7 @@ RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_pro
    }
   std::cout << "Here 2 with cmId " << _cmId << std::endl;
 
-  LOG_CIOS_DEBUG_MSG("created SRQ shared receive queue " /*<< _cmId->qp->srq*/ << " context " << _srq_attr.srq_context << " max wr " << _srq_attr.attr.max_wr << " max sge " << _srq_attr.attr.max_sge);
+  LOG_DEBUG_MSG("created SRQ shared receive queue " /*<< _cmId->qp->srq*/ << " context " << _srq_attr.srq_context << " max wr " << _srq_attr.attr.max_wr << " max sge " << _srq_attr.attr.max_sge);
 //  std::cout << "Here 2 with cmId " << _cmId << std::endl;
    return;
 }

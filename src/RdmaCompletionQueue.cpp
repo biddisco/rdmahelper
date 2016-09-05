@@ -81,7 +81,7 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
    std::ostringstream tag;
    tag << "[CQ " << _completionQ->handle << "] ";
    _tag = tag.str();
-   LOG_CIOS_DEBUG_MSG(_tag << "created completion queue ");
+   LOG_DEBUG_MSG(_tag << "created completion queue ");
 
    // Request notification of events on the completion queue.
    try {
@@ -91,7 +91,7 @@ RdmaCompletionQueue::RdmaCompletionQueue(ibv_context *context, int qSize,  ibv_c
       LOG_ERROR_MSG(_tag << "error requesting first completion queue notification: " << rdma_error::error_string(e.errcode()));
       throw e;
    }
-   LOG_CIOS_TRACE_MSG(_tag << "requested first notification for completion queue");
+   LOG_TRACE_MSG(_tag << "requested first notification for completion queue");
 }
 
 RdmaCompletionQueue::~RdmaCompletionQueue()
@@ -100,7 +100,7 @@ RdmaCompletionQueue::~RdmaCompletionQueue()
       int err = ibv_destroy_cq(_completionQ);
       if (err == 0) {
          _completionQ = NULL;
-         LOG_CIOS_DEBUG_MSG(_tag << "destroyed completion queue");
+         LOG_DEBUG_MSG(_tag << "destroyed completion queue");
       }
       else {
          LOG_ERROR_MSG(_tag << "error destroying completion queue: " << rdma_error::error_string(err));
@@ -118,7 +118,7 @@ RdmaCompletionQueue::requestEvent(void)
       throw e;
    }
 
-   LOG_CIOS_TRACE_MSG(_tag << "requested notification for completion queue");
+   LOG_TRACE_MSG(_tag << "requested notification for completion queue");
    return;
 }
 
@@ -127,7 +127,7 @@ RdmaCompletionQueue::ackEvents(unsigned int numEvents)
 {
    // Acknowledge the outstanding notification events.
    ibv_ack_cq_events(_completionQ, numEvents);
-   LOG_CIOS_TRACE_MSG(_tag << "acked " << numEvents << " notification event for completion queue");
+   LOG_TRACE_MSG(_tag << "acked " << numEvents << " notification event for completion queue");
    _totalEvents += numEvents;
 
    return;
@@ -150,11 +150,11 @@ int RdmaCompletionQueue::poll_completion(struct ibv_wc *completion)
             std::terminate();
         }
         else {
-            LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+            LOG_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
                     << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
         }
 
-        LOG_CIOS_TRACE_MSG(_tag << " removing " << hexpointer(completion->wr_id)
+        LOG_TRACE_MSG(_tag << " removing " << hexpointer(completion->wr_id)
                 << RdmaCompletionQueue::wc_opcode_str(completion->opcode));
     }
     return nc;
@@ -176,7 +176,7 @@ int RdmaCompletionQueue::removeCompletions(int numEntries)
     }
     _numCompletions += nc;
     if (nc>0) {
-        LOG_CIOS_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
+        LOG_TRACE_MSG(_tag << _numCompletions-_nextCompletion << " pending : removing " << nc << " work completions from completion queue, ");
     }
     _totalCompletions += _numCompletions;
 
@@ -189,7 +189,7 @@ RdmaCompletionQueue::popCompletion(void)
     std::lock_guard<std::mutex> lock(completion_mutex);
     //
     if (_numCompletions == 0) {
-        LOG_CIOS_TRACE_MSG(_tag << "no work completions are available");
+        LOG_TRACE_MSG(_tag << "no work completions are available");
         return NULL;
     }
 
@@ -200,7 +200,7 @@ RdmaCompletionQueue::popCompletion(void)
                 << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
     }
     else {
-        LOG_CIOS_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
+        LOG_TRACE_MSG(_tag << "work completion status '" << ibv_wc_status_str(completion->status)
                 << "' for operation " << wc_opcode_str(completion->opcode) <<  " (" << completion->opcode << ")");
     }
 
@@ -209,11 +209,11 @@ RdmaCompletionQueue::popCompletion(void)
 
     // All of the work completions have been popped.
     if (_nextCompletion == _numCompletions) {
-        LOG_CIOS_TRACE_MSG(_tag << "done, all " << _numCompletions << " work completions are popped");
+        LOG_TRACE_MSG(_tag << "done, all " << _numCompletions << " work completions are popped");
         _numCompletions = 0;
         _nextCompletion = 0;
     }
-    LOG_CIOS_TRACE_MSG(_tag << "after pop, next completion is " << _nextCompletion << ", num completions is " << _numCompletions);
+    LOG_TRACE_MSG(_tag << "after pop, next completion is " << _nextCompletion << ", num completions is " << _numCompletions);
 
     return completion;
 }
