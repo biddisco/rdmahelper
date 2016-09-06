@@ -25,7 +25,7 @@
 //
 // Logging disabled, #define all macros to be empty
 //
-#ifndef RDMA_HANDLER_HAVE_LOGGING
+#ifndef RDMA_HELPER_HAVE_LOGGING
 #  define LOG_DEBUG_MSG(x)
 #  define LOG_TRACE_MSG(x)
 #  define LOG_INFO_MSG(x)

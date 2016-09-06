@@ -29,6 +29,7 @@
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaController.h>
+#include <plugins/parcelport/verbs/readers_writers_mutex.hpp>
 //
 #include <boost/lexical_cast.hpp>
 //
@@ -55,6 +56,11 @@ namespace verbs
     event_channel::mutex_type event_channel::event_mutex_;
 }}}}
 
+namespace hpx { namespace lcos { namespace local {
+    std::atomic<int> readers_writer_mutex::lockcount;
+    std::atomic<int> readers_writer_mutex::lockcount2;
+}}}
+
 using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
 
@@ -74,8 +80,6 @@ RdmaController::~RdmaController() {
   _clients.clear();
   LOG_DEBUG_MSG("RdmaController destructor closing server");
   this->_rdmaListener.reset();
-  LOG_DEBUG_MSG("RdmaController destructor freeing regions");
-  this->_largeRegion.reset();
   LOG_DEBUG_MSG("RdmaController destructor freeing memory pool");
   this->_memoryPool.reset();
   LOG_DEBUG_MSG("RdmaController destructor releasing protection domain");
@@ -181,30 +185,11 @@ int RdmaController::startup() {
   }
   LOG_DEBUG_MSG("listening for new RDMA connections on fd " << hexnumber(_rdmaListener->getEventChannelFd()));
 
-  // Create a large memory region.
-  _largeRegion = rdma_memory_region_ptr(new rdma_memory_region());
-  err = _largeRegion->allocate(_protectionDomain, LargeRegionSize);
-  if (err != 0) {
-    LOG_ERROR_MSG("error allocating large memory region: " << rdma_error::error_string(err));
-    return err;
-  }
-  LOG_DEBUG_MSG("created large memory region with local key " << _largeRegion->getLocalKey());
-
   return 0;
 }
 /*---------------------------------------------------------------------------*/
 int RdmaController::cleanup(void) {
   return 0;
-}
-
-/*---------------------------------------------------------------------------*/
-void RdmaController::freeRegion(rdma_memory_region *region) {
-  LOG_ERROR_MSG("Removed region free code, must replace it");
-  //  if(!this->_memoryPool->is_from(region)) {
-  //    throw std::runtime_error("Trying to delete a meory region we didn't allocate");
-  //  }
-  //  LOG_DEBUG_MSG("")
-  //  this->_memoryPool->free(region);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -252,18 +237,27 @@ int RdmaController::pollCompletionQueues()
 /*---------------------------------------------------------------------------*/
 int RdmaController::eventMonitor(int Nevents)
 {
-  int events_handled = 0;
-  events_handled += pollCompletionQueues();
-  if (event_poll_count++ % 10 == 0) {
-    events_handled += hpx::parcelset::policies::verbs::event_channel::
-        poll_event_channel(_rdmaListener->getEventChannelFd(),
-            [this](){
-                this->eventChannelHandler();
-            }
-        );
+    // completions of work requests
+    int completions_handled = pollCompletionQueues();
 
-  }
-  return events_handled;
+    // events don't need to be checked that often
+    if (event_poll_count++ % 1 != 0) {
+        return completions_handled;
+    }
+    // scoped lock around event channel handler
+    {
+        unique_lock lock(event_channel_mutex_, std::try_to_lock);
+        if (!lock.owns_lock()) {
+            return completions_handled;
+        }
+        completions_handled += hpx::parcelset::policies::verbs::event_channel::
+            poll_event_channel(_rdmaListener->getEventChannelFd(),
+                [this]() {
+                    this->eventChannelHandler();
+                }
+            );
+    }
+    return completions_handled;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -274,35 +268,26 @@ void RdmaController::eventChannelHandler(void)
     //
     int err = hpx::parcelset::policies::verbs::event_channel::
         get_event(_rdmaListener->getEventChannel(), event_channel::no_ack_event,
-        rdma_cm_event_type(0), cm_event);
+            rdma_cm_event_type(0), cm_event);
 
     if (err != 0) {
         return;
     }
 
-    // Get the event information we need
-    rdma_cm_event_type type = cm_event->event;
-    uint32_t             qp = (cm_event->id->qp) ? cm_event->id->qp->qp_num : 0;
-    struct rdma_cm_id   *id = cm_event->id;
-    struct ibv_context *cxt = cm_event->id->verbs;
-
-    // Handle the event.
-    switch (type) {
+    // Handle the event : ack_event will deleted the event, do not use it afterwards.
+    switch (cm_event->event) {
 
     case RDMA_CM_EVENT_CONNECT_REQUEST: {
         LOG_DEBUG_MSG("RDMA_CM_EVENT_CONNECT_REQUEST");
         //
-        // prevent
+        // prevent two connections from taking place between the same endpoints
         //
         if (this->_connectRequestFunction) {
-            struct sockaddr *ip_src = &id->route.addr.src_addr;
+            struct sockaddr *ip_src = &cm_event->id->route.addr.src_addr;
             struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
             //
-            struct sockaddr *ip_dst = &id->route.addr.dst_addr;
+            struct sockaddr *ip_dst = &cm_event->id->route.addr.dst_addr;
             struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
-            //
-            std::string ip_srcs = inet_ntoa(addr_src->sin_addr);
-            std::string ip_dsts = inet_ntoa(addr_dst->sin_addr);
             //
             char ip1[4], ip2[4];
             memcpy(ip1, &addr_dst->sin_addr, 4);
@@ -319,8 +304,8 @@ void RdmaController::eventChannelHandler(void)
             //
             if (!this->_connectRequestFunction(addr_dst, addr_src)) {
                 LOG_ERROR_MSG("Connect request callback rejected (already connecting?)");
-                event_channel::ack_event(cm_event);
-                _rdmaListener->reject(id);
+                // reject() does not wait or ack
+                _rdmaListener->reject(cm_event->id);
                 break;
             }
         }
@@ -328,10 +313,12 @@ void RdmaController::eventChannelHandler(void)
         // Construct a RdmaCompletionQueue object for the new client.
         RdmaCompletionQueuePtr completionQ;
         try {
-            //      completionQ = std::make_shared < RdmaCompletionQueue
-            //          > (cxt, RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
-            completionQ = std::make_shared < RdmaCompletionQueue
-                > (cxt, RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
+            //completionQ = std::make_shared<RdmaCompletionQueue>
+            //    (cm_event->id->verbs, RdmaCompletionQueue::MaxQueueSize,
+            //    _completionChannel->getChannel());
+            completionQ = std::make_shared<RdmaCompletionQueue>
+                (cm_event->id->verbs, RdmaCompletionQueue::MaxQueueSize,
+                    (ibv_comp_channel*)NULL);
         } catch (rdma_error& e) {
             LOG_ERROR_MSG("error creating completion queue: " << e.what());
             break;
@@ -340,8 +327,9 @@ void RdmaController::eventChannelHandler(void)
         // Construct a new RdmaClient object for the new client.
         RdmaClientPtr client;
         try {
-            client = std::make_shared < RdmaClient
-                > (id, _protectionDomain, completionQ, _memoryPool, _rdmaListener->SRQ());
+            client = std::make_shared<RdmaClient>
+                (cm_event->id, _protectionDomain, completionQ,
+                    _memoryPool, _rdmaListener->SRQ());
         } catch (rdma_error& e) {
             LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
             completionQ.reset();
@@ -350,21 +338,24 @@ void RdmaController::eventChannelHandler(void)
 
         LOG_DEBUG_MSG("adding a new client with qpnum " << client->getQpNum());
 
+        // make sure client has preposted receives
+        // @TODO, when we use a shared receive queue, fix this
+        client->refill_preposts(RDMA_MAX_PREPOSTS);
+
         // Add new client to map of active clients.
         _clients.insert(std::pair<uint32_t, RdmaClientPtr>(client->getQpNum(), client));
 
         // Add completion queue to completion channel.
         //    _completionChannel->addCompletionQ(completionQ);
 
-        this->refill_client_receives();
-
         // Accept the connection from the new client.
-        err = client->accept();
-        if (err != 0) {
-            printf("error accepting client connection: %s\n", rdma_error::error_string(err));
+        // accept() does not wait or ack
+        if (client->accept() != 0) {
+            LOG_ERROR_MSG("error accepting client connection: %s "
+                << rdma_error::error_string(err));
             _clients.erase(client->getQpNum());
             //      _completionChannel->removeCompletionQ(completionQ);
-            client->reject(id);
+            client->reject(cm_event->id);
             client.reset();
             completionQ.reset();
             break;
@@ -375,13 +366,29 @@ void RdmaController::eventChannelHandler(void)
     }
 
     case RDMA_CM_EVENT_ESTABLISHED: {
+        struct sockaddr *ip_src = &cm_event->id->route.addr.src_addr;
+        struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
+        //
+        struct sockaddr *ip_dst = &cm_event->id->route.addr.dst_addr;
+        struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
+        //
+        char ip1[4], ip2[4];
+        memcpy(ip1, &addr_dst->sin_addr, 4);
+        memcpy(ip2, &addr_src->sin_addr, 4);
+
+        LOG_ERROR_MSG("RDMA_CM_EVENT_ESTABLISHED         "
+            << ipaddress(addr_dst->sin_addr.s_addr) << "to "
+            << ipaddress(addr_src->sin_addr.s_addr)
+            << "we are " << ipaddress(_localAddr));
+
         LOG_DEBUG_MSG("RDMA_CM_EVENT_ESTABLISHED");
         // Find connection associated with this event.
-        RdmaClientPtr client = _clients[qp];
-        LOG_INFO_MSG(client->getTag() << "connection established with " << client->getRemoteAddressString());
+        RdmaClientPtr client = _clients[cm_event->id->qp->qp_num];
+        LOG_INFO_MSG(client->getTag() << "connection established with "
+            << client->getRemoteAddressString());
         if (this->_connectionFunction) {
             LOG_ERROR_MSG("calling connection callback ");
-            this->_connectionFunction(std::make_pair(qp, 0), client);
+            this->_connectionFunction(std::make_pair(cm_event->id->qp->qp_num, 0), client);
         }
         break;
     }
@@ -389,7 +396,7 @@ void RdmaController::eventChannelHandler(void)
     case RDMA_CM_EVENT_DISCONNECTED: {
         LOG_DEBUG_MSG("RDMA_CM_EVENT_DISCONNECTED");
         // Find connection associated with this event.
-        RdmaClientPtr client = _clients[qp];
+        RdmaClientPtr client = _clients[cm_event->id->qp->qp_num];
         RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
 
         // Complete disconnect initiated by peer.
@@ -404,7 +411,7 @@ void RdmaController::eventChannelHandler(void)
         event_channel::ack_event(cm_event);
 
         // Remove connection from map of active connections.
-        _clients.erase(qp);
+        _clients.erase(cm_event->id->qp->qp_num);
 
         // Destroy connection object.
         LOG_DEBUG_MSG("destroying RDMA connection to client " << client->getRemoteAddressString());
@@ -421,13 +428,13 @@ void RdmaController::eventChannelHandler(void)
     }
 
     default: {
-        LOG_ERROR_MSG("RDMA event: " << rdma_event_str(type) << " is not supported");
+        LOG_ERROR_MSG("RDMA event: " << rdma_event_str(cm_event->event) << " is not supported");
         break;
     }
     }
 
     // Acknowledge the event.  Should this always be done?
-    if (type != RDMA_CM_EVENT_DISCONNECTED) {
+    if (cm_event->event != RDMA_CM_EVENT_DISCONNECTED) {
         event_channel::ack_event(cm_event);
     }
 
@@ -467,57 +474,60 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_typ
 
 /*---------------------------------------------------------------------------*/
 // return the client
-RdmaClientPtr RdmaController::makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port)
+RdmaClientPtr RdmaController::makeServerToServerConnection(
+    uint32_t remote_ip,
+    uint32_t remote_port,
+    struct ibv_context *cxt)
 {
-  std::string remoteAddr = inet_ntoa(*(struct in_addr*)(&remote_ip));
-  std::string remotePort = boost::lexical_cast<std::string>(remote_port);
+    std::string remoteAddr = inet_ntoa(*(struct in_addr*) (&remote_ip));
+    std::string remotePort = boost::lexical_cast < std::string > (remote_port);
 
-  LOG_ERROR_MSG("makeServerToServerConnection from "
-      << ipaddress(_localAddr)
-      << "to " << ipaddress(remote_ip));
-  RdmaCompletionQueuePtr completionQ;
-  try {
-//    completionQ = std::make_shared < RdmaCompletionQueue >
-//      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
-    completionQ = std::make_shared < RdmaCompletionQueue >
-      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*)NULL);
-  } catch (rdma_error& e) {
-    LOG_ERROR_MSG("error creating completion queue: " << e.what());
-  }
+    LOG_ERROR_MSG("makeServerToServerConnection from "
+        << ipaddress(_localAddr)
+        << "to " << ipaddress(remote_ip));
+    RdmaCompletionQueuePtr completionQ;
+    try {
+        //    completionQ = std::make_shared < RdmaCompletionQueue >
+        //      (_rdmaListener->getContext(), RdmaCompletionQueue::MaxQueueSize, _completionChannel->getChannel());
+        completionQ = std::make_shared<RdmaCompletionQueue>
+                (cxt, RdmaCompletionQueue::MaxQueueSize, (ibv_comp_channel*) NULL);
+    } catch (rdma_error& e) {
+        LOG_ERROR_MSG("error creating completion queue: " << e.what());
+    }
 
-  RdmaClientPtr newClient;
-  try {
-    newClient = std::make_shared<RdmaClient>
-      (_localAddrString, _localPortString, remoteAddr, remotePort);
-  } catch (rdma_error& e) {
-    LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
-    completionQ.reset();
-    return NULL;
-  }
+    RdmaClientPtr newClient;
+    try {
+        newClient = std::make_shared<RdmaClient>
+            (_localAddrString, _localPortString, remoteAddr, remotePort);
+    } catch (rdma_error& e) {
+        LOG_ERROR_MSG("error creating rdma client: %s\n" << e.what());
+        completionQ.reset();
+        return NULL;
+    }
 
-  // make a connection
-  if (newClient->makePeer(_protectionDomain, completionQ)!=0) {
-      LOG_DEBUG_MSG("makePeer failed in makeServerToServerConnection from "
-          << ipaddress(_localAddr)
-          << "to " << ipaddress(remote_ip));
-      LOG_ERROR_MSG("Reset completion Q");
-      completionQ.reset();
-      LOG_ERROR_MSG("returning NULL ");
-      return NULL;
-  }
+    // make a connection
+    if (newClient->makePeer(_protectionDomain, completionQ) != 0) {
+        LOG_DEBUG_MSG("makePeer failed in makeServerToServerConnection from "
+            << ipaddress(_localAddr)
+            << "to " << ipaddress(remote_ip));
+        LOG_ERROR_MSG("Reset completion Q");
+        completionQ.reset();
+        LOG_ERROR_MSG("returning NULL ");
+        return NULL;
+    }
 
-  // Add new client to map of active clients.
-  _clients.insert(std::pair<uint32_t, RdmaClientPtr>(newClient->getQpNum(), newClient));
+    // Add new client to map of active clients.
+    _clients.insert(std::pair<uint32_t, RdmaClientPtr>(newClient->getQpNum(), newClient));
 
-  // Add completion queue to completion channel.
-//  _completionChannel->addCompletionQ(completionQ);
+    // Add completion queue to completion channel.
+    //  _completionChannel->addCompletionQ(completionQ);
 
-  newClient->setMemoryPool(_memoryPool);
-  newClient->setInitiatedConnection(true);
-  this->refill_client_receives();
+    newClient->setMemoryPool(_memoryPool);
+    newClient->setInitiatedConnection(true);
+    this->refill_client_receives();
 
-  LOG_DEBUG_MSG("Added a server-server client with qpnum " << decnumber(newClient->getQpNum()));
-  return newClient;
+    LOG_DEBUG_MSG("Added a server-server client with qpnum " << decnumber(newClient->getQpNum()));
+    return newClient;
 }
 
 /*---------------------------------------------------------------------------*/

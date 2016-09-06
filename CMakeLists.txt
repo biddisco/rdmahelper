@@ -28,7 +28,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 #------------------------------------------------------------------------------
 option(RDMAHELPER_WITH_LOGGING "Enable logging" ON)
 if (RDMAHELPER_WITH_LOGGING)
-  add_config_define(RDMAHELPER_HAVE_LOGGING)
+  add_config_define(RDMA_HELPER_HAVE_LOGGING)
   if (NOT Boost_USE_STATIC_LIBS)
     add_config_define(BOOST_LOG_DYN_LINK)
   endif()

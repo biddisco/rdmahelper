@@ -138,13 +138,13 @@ public:
     typedef std::function<int(struct ibv_wc completion, RdmaClient *client)> CompletionFunction;
     void setCompletionFunction(CompletionFunction f) { this->_completionFunction = f;}
 
-    void freeRegion(rdma_memory_region *region);
-
     int num_clients() { return _clients.size(); }
 
     void refill_client_receives();
 
-    RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port);
+    RdmaClientPtr makeServerToServerConnection(uint32_t remote_ip, uint32_t remote_port,
+        struct ibv_context *cxt);
+
     void removeServerToServerConnection(RdmaClientPtr client);
 
     void removeAllInitiatedConnections();
@@ -181,82 +181,14 @@ private:
 
     //! Map of all active clients indexed by queue pair number.
     hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr> _clients;
+    hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr> connecting_clients_;
     typedef hpx::concurrent::unordered_map<uint32_t, RdmaClientPtr>::map_read_lock_type
         map_read_lock_type;
 
-    //! Large memory region for transferring data (used for both inbound and outbound data).
-    rdma_memory_region_ptr _largeRegion;
+    // only allow one thread to handle connect/disconnect events etc
+    mutex_type event_channel_mutex_;
 
     rdma_memory_poolPtr _memoryPool;
-
-    //! \brief  Transfer data to the client from the large memory region.
-    //! \param  address Address of remote memory region.
-    //! \param  rkey Key of remote memory region.
-    //! \param  length Length of data to transfer.
-    //! \return 0 when successful, error when unsuccessful.
-    /*
-   uint32_t putData(const RdmaClientPtr& client, uint64_t address, uint32_t rkey, uint32_t length)
-   {
-       uint32_t rc = 0;
-   try {
-      // Post a rdma write request to the send queue using the large message region.
-           _largeRegion->setMessageLength(length);
-           uint64_t reqID = (uint64_t)_largeRegion->getAddress();
-           uint64_t& localAddress = reqID;
-           uint32_t lkey = _largeRegion->getLocalKey();
-           int err = client->postRdmaWrite(reqID, rkey, address, //remote key and address
-                     lkey,  localAddress, (ssize_t)length,IBV_SEND_SIGNALED);
-           if (err) return (rc=(uint32_t)err);
-
-           // Wait for notification that the rdma read completed.
-           while (!completionChannelHandler(reqID));
-       }
-
-       catch (const rdma_error& e) {
-           rc = (uint32_t)e.errcode();
-       }
-
-       return rc;
-   }
-
-   //! \brief  Transfer data from the client into the large memory region.
-   //! \param  address Address of remote memory region.
-   //! \param  rkey Key of remote memory region.
-   //! \param  length Length of data to transfer.
-   //! \return 0 when successful, error when unsuccessful.
-
-   uint32_t getData( const RdmaClientPtr& client, uint64_t address, uint32_t rkey, uint32_t length)
-   {
-       uint32_t rc = 0;
-       try {
-           // Post a rdma read request to the send queue using the large message region.
-           std::cout << "Here 1 (getData) " << std::endl;
-           _largeRegion->setMessageLength(length);
-           std::cout << "Here 2 " << std::endl;
-           uint64_t reqID = (uint64_t)_largeRegion->getAddress();
-           std::cout << "Here 3 " << std::endl;
-           uint64_t& localAddress = reqID;
-           std::cout << "Here 4 " << std::endl;
-           uint32_t lkey = _largeRegion->getLocalKey();
-           std::cout << "Here 5 " << std::endl;
-           int err = client->postRdmaRead(reqID, rkey, address, //remote key and address
-                                           lkey,  localAddress, (ssize_t)length);
-           std::cout << "Here 6 " << std::endl;
-           if (err) return (rc=(uint32_t)err);
-           std::cout << "Here 7 " << std::endl;
-
-           // Wait for notification that the rdma read completed.
-           while (!completionChannelHandler(reqID));
-       }
-
-       catch (const rdma_error& e) {
-           rc = (uint32_t)e.errcode();
-           std::cout << "Caught an exception 8 " << std::endl;
-       }
-
-       return rc;
-   }
-     */
 
 };
 

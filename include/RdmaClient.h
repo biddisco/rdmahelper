@@ -49,118 +49,123 @@
 namespace bgcios
 {
 
-//! Client for RDMA operations with a remote partner.
+    //! Client for RDMA operations with a remote partner.
 
-class RdmaClient : public RdmaConnection
-{
-public:
+    class RdmaClient : public RdmaConnection
+    {
+    public:
 
-   //! \brief  Default constructor.
+        //! \brief  Default constructor.
 
-   RdmaClient() : RdmaConnection() {
-      _numRecvBlocks = 0;
-      _sizeBlock = 512;
-      _usingBlocking = false;
-   }
+        RdmaClient() : RdmaConnection() {
+            _numRecvBlocks = 0;
+            _sizeBlock = 512;
+            _usingBlocking = false;
+        }
 
-   //! \brief  Constructor.
-   //! \param  localAddr Local address in dotted decimal string format.
-   //! \param  localPort Local port number string.
-   //! \param  remoteAddr Remote address in dotted decimal string format.
-   //! \param  remotePort Remote port number string.
-   //! \throws rdma_error.
+        //! \brief  Constructor.
+        //! \param  localAddr Local address in dotted decimal string format.
+        //! \param  localPort Local port number string.
+        //! \param  remoteAddr Remote address in dotted decimal string format.
+        //! \param  remotePort Remote port number string.
+        //! \throws rdma_error.
 
-   RdmaClient(const std::string localAddr, const std::string localPort, const std::string remoteAddr, const std::string remotePort) :
-      RdmaConnection(localAddr, localPort, remoteAddr, remotePort)
-   {
-      _uniqueId = (uint64_t)-1;
-      _numRecvBlocks = 0;
-      _sizeBlock = 512;
-      _usingBlocking = false;
-   }
+        RdmaClient(const std::string localAddr,
+            const std::string localPort,
+            const std::string remoteAddr,
+            const std::string remotePort) :
+            RdmaConnection(localAddr, localPort, remoteAddr, remotePort)
+        {
+            _uniqueId = (uint64_t)-1;
+            _numRecvBlocks = 0;
+            _sizeBlock = 512;
+            _usingBlocking = false;
+        }
 
-   //! \brief  Constructor.
-   //! \param  cmId Rdma connection management id to use for new client.
-   //! \param  domain Protection domain for new client.
-   //! \param  completionQ Completion queue for both send and receive operations.
-   //! \throws rdma_error.
+        //! \brief  Constructor.
+        //! \param  cmId Rdma connection management id to use for new client.
+        //! \param  domain Protection domain for new client.
+        //! \param  completionQ Completion queue for both send and receive operations.
+        //! \throws rdma_error.
 
-   RdmaClient(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain,
-       RdmaCompletionQueuePtr completionQ, rdma_memory_poolPtr pool,
-       RdmaSharedReceiveQueuePtr SRQ) :
-      RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
-   {
-      createRegions(domain);
-      _completionQ = completionQ;
-      _memoryPool = pool;
-      _uniqueId = (uint64_t)-1;
-      _numRecvBlocks = 0;
-      _sizeBlock = 512;
-      _usingBlocking = false;
-   }
+        RdmaClient(struct rdma_cm_id *cmId,
+            rdma_protection_domainPtr domain,
+            RdmaCompletionQueuePtr completionQ,
+            rdma_memory_poolPtr pool,
+            RdmaSharedReceiveQueuePtr SRQ) :
+            RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
+        {
+            createRegions(domain);
+            _completionQ = completionQ;
+            _memoryPool = pool;
+            _uniqueId = (uint64_t)-1;
+            _numRecvBlocks = 0;
+            _sizeBlock = 512;
+            _usingBlocking = false;
+        }
 
-   //! \brief  Default destructor.
+        //! \brief  Default destructor.
 
-   ~RdmaClient();
+        ~RdmaClient();
 
-   //! \brief  Connect to a remote server.
-   //! \param  domain Protection domain for new connection.
-   //! \param  completionQ Completion queue for both send and receive operations.
-   //! \return 0 when successful, errno when unsuccessful.
+        //! \brief  Connect to a remote server.
+        //! \param  domain Protection domain for new connection.
+        //! \param  completionQ Completion queue for both send and receive operations.
+        //! \return 0 when successful, errno when unsuccessful.
 
-   int makePeer(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr completionQ);
+        int makePeer(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr completionQ);
 
-   //! \brief  Get completion queue used for both send and receive operations.
-   //! \return Completion queue pointer.
+        //! \brief  Get completion queue used for both send and receive operations.
+        //! \return Completion queue pointer.
 
-   RdmaCompletionQueuePtr& getCompletionQ(void) { return _completionQ; }
+        RdmaCompletionQueuePtr& getCompletionQ(void) { return _completionQ; }
 
-   // overridden to monitor outstanding receive count
-   virtual uint64_t
-   postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false)
-   {
-     uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, length, expected);
-     this->pushReceive();
-     return wr_id;
-   }
+        // overridden to monitor outstanding receive count
+        virtual uint64_t
+        postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false)
+        {
+            uint64_t wr_id = RdmaConnection::postRecvRegionAsID(region, length, expected);
+            this->pushReceive();
+            return wr_id;
+        }
 
-private:
+    private:
 
-   //! \brief  Create memory regions for inbound and outbound messages.
-   //! \param  domain Protection domain for client.
-   //! \return Nothing.
-   //! \throws rdma_error.
+        //! \brief  Create memory regions for inbound and outbound messages.
+        //! \param  domain Protection domain for client.
+        //! \return Nothing.
+        //! \throws rdma_error.
 
-   void createRegions(rdma_protection_domainPtr domain);
+        void createRegions(rdma_protection_domainPtr domain);
 
-   //! Memory region for inbound messages.
-   rdma_protection_domainPtr _domain;
+        //! Memory region for inbound messages.
+        rdma_protection_domainPtr _domain;
 
-   //! Memory region for inbound messages.
-   rdma_memory_region_ptr _inMessageRegion;
+        //! Memory region for inbound messages.
+        rdma_memory_region_ptr _inMessageRegion;
 
-   //! Memory region for outbound messages.
-   rdma_memory_region_ptr _outMessageRegion;
+        //! Memory region for outbound messages.
+        rdma_memory_region_ptr _outMessageRegion;
 
-   //! Memory region for Auxilliary outbound messages.
-   rdma_memory_region_ptr _outMessageRegionAux;
+        //! Memory region for Auxilliary outbound messages.
+        rdma_memory_region_ptr _outMessageRegionAux;
 
-   //! Completion queue.
-   RdmaCompletionQueuePtr _completionQ;
+        //! Completion queue.
+        RdmaCompletionQueuePtr _completionQ;
 
-   //! Unique id to identify the client.
-   uint64_t _uniqueId;
+        //! Unique id to identify the client.
+        uint64_t _uniqueId;
 
-   //! number of receive blocks and the blocking size and whether using blocking
-   int _numRecvBlocks;
-   int _sizeBlock;
-   bool  _usingBlocking;
+        //! number of receive blocks and the blocking size and whether using blocking
+        int _numRecvBlocks;
+        int _sizeBlock;
+        bool  _usingBlocking;
 
-   //std::shared_ptr<pinned_pool> _pinned_memory_pool;
-};
+        //std::shared_ptr<pinned_pool> _pinned_memory_pool;
+    };
 
-//! Smart pointer for RdmaClient object.
-typedef std::shared_ptr<RdmaClient> RdmaClientPtr;
+    //! Smart pointer for RdmaClient object.
+    typedef std::shared_ptr<RdmaClient> RdmaClientPtr;
 
 } // namespace bgcios
 

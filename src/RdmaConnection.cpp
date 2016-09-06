@@ -70,7 +70,10 @@ RdmaConnection::RdmaConnection()
     createId();
 }
 
-RdmaConnection::RdmaConnection(const std::string localAddr, const std::string localPort, const std::string remoteAddr, const std::string remotePort)
+RdmaConnection::RdmaConnection(const std::string localAddr,
+    const std::string localPort,
+    const std::string remoteAddr,
+    const std::string remotePort)
 {
     // Initialize object to known state and create rdma connection management id.
     init();
@@ -94,8 +97,12 @@ RdmaConnection::RdmaConnection(const std::string localAddr, const std::string lo
     resolveAddress(&localAddress, &remoteAddress);
 }
 
-RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
-    RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue)
+RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId,
+    rdma_protection_domainPtr domain,
+    RdmaCompletionQueuePtr sendCompletionQ,
+    RdmaCompletionQueuePtr recvCompletionQ,
+    RdmaSharedReceiveQueuePtr SRQ,
+    bool signalSendQueue)
 {
     // Initialize object to known state.
     init();
@@ -105,7 +112,8 @@ RdmaConnection::RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domainPt
     _srq  = SRQ;
     memcpy(&_remoteAddress, &(_cmId->route.addr.dst_addr), sizeof(struct sockaddr_in));
     // Create a queue pair.
-    createQp(domain, sendCompletionQ, recvCompletionQ, HPX_PARCELPORT_VERBS_MAX_WORK_REQUESTS, signalSendQueue);
+    createQp(domain, sendCompletionQ, recvCompletionQ,
+        HPX_PARCELPORT_VERBS_MAX_WORK_REQUESTS, signalSendQueue);
 }
 
 RdmaConnection::~RdmaConnection(void)
