@@ -40,9 +40,8 @@
 #define COMMON_RDMACONNECTION_H
 
 // Includes
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_region.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/protection_domain.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnectionBase.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaSharedReceiveQueue.h>
@@ -55,6 +54,7 @@
 #include <iostream>
 #include <iomanip>
 #include <atomic>
+#include "../../rdma/memory_region.hpp"
 
 using namespace hpx::parcelset::policies::verbs;
 
@@ -88,7 +88,7 @@ public:
     //! \param  signalSendQueue True to generate completion queue entry for all send queue operations.
     //! \throws rdma_error.
 
-    RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ,
+    RdmaConnection(struct rdma_cm_id *cmId, rdma_protection_domain_ptr domain, RdmaCompletionQueuePtr sendCompletionQ,
         RdmaCompletionQueuePtr recvCompletionQ, RdmaSharedReceiveQueuePtr SRQ, bool signalSendQueue = false);
 
     //! \brief  Default destructor.
@@ -98,12 +98,12 @@ public:
     //! \brief  Accept a connection on the rdma connection management id.
     //! \return 0 when successful, errno when unsuccessful.
 
-    int accept(void);
+    int accept();
 
     //! \brief  Reject a connection on the rdma connection management id.
     //! \return 0 when successful, errno when unsuccessful.
 
-    int reject(struct rdma_cm_id *cmid);
+    int reject();
 
     //! \brief  Resolve remote address and optional local address from IP addresses to rdma addresses.
     //! \param  localAddr Local IPv4 address of this client (can be NULL).
@@ -256,9 +256,9 @@ public:
     {
         // Build scatter/gather element for inbound message.
         struct ibv_sge recv_sge;
-        recv_sge.addr   = (uint64_t)region->getAddress();
+        recv_sge.addr   = (uint64_t)region->get_address();
         recv_sge.length = length;
-        recv_sge.lkey   = region->getLocalKey();
+        recv_sge.lkey   = region->get_local_key();
 
         // Build receive work request.
         struct ibv_recv_wr recv_wr;
@@ -270,7 +270,9 @@ public:
         struct ibv_recv_wr *badRequest;
         int err = ibv_post_recv(_cmId->qp, &recv_wr, &badRequest);
         if (err!=0) {
-            throw(rdma_error(err, "postSendNoImmed failed"));
+            LOG_ERROR_MSG("postRecvRegionAsID failed");
+            throw(std::runtime_error(std::string("postRecvRegionAsID failed")
+                + rdma_error::error_string(errno)));
         }
         LOG_DEBUG_MSG(_tag.c_str() << "posting Recv wr_id " << hexpointer(recv_wr.wr_id)
             << " with Length " << hexlength(length)
@@ -387,7 +389,7 @@ public:
     //! \brief  Create a shared receive queue :
     //! this should only be called by a server. Client objects owned by a server will
     //! have it passed into makepeer
-    int create_srq(rdma_protection_domainPtr domain);
+    int create_srq(rdma_protection_domain_ptr domain);
 
     inline RdmaSharedReceiveQueuePtr SRQ() {
         return _srq;
@@ -423,7 +425,7 @@ protected:
     //! \return Nothing.
     //! \throws rdma_error.
 
-    void createQp(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
+    void createQp(rdma_protection_domain_ptr domain, RdmaCompletionQueuePtr sendCompletionQ, RdmaCompletionQueuePtr recvCompletionQ,
         uint32_t maxWorkRequests, bool signalSendQueue);
 
     RdmaSharedReceiveQueuePtr _srq;

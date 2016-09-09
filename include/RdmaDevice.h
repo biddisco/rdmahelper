@@ -84,7 +84,7 @@ public:
    //! \brief  Get the IP address of the network interface.
    //! \return IP address for RDMA connection management.
 
-   in_addr_t getAddress(void);
+   in_addr_t get_address(void);
 
    uint64_t getDeviceInfo(bool verbose);
 

@@ -24,8 +24,8 @@
 //! \file  RdmaController.cc
 //! \brief Methods for bgcios::stdio::RdmaController class.
 
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/event_channel.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/event_channel.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaController.h>
@@ -55,11 +55,6 @@ namespace verbs
 {
     event_channel::mutex_type event_channel::event_mutex_;
 }}}}
-
-namespace hpx { namespace lcos { namespace local {
-    std::atomic<int> readers_writer_mutex::lockcount;
-    std::atomic<int> readers_writer_mutex::lockcount2;
-}}}
 
 using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
@@ -98,13 +93,13 @@ int RdmaController::startup() {
     linkDevice = RdmaDevicePtr(new RdmaDevice(_device, _interface));
   } catch (rdma_error& e) {
     LOG_ERROR_MSG("error opening InfiniBand device: " << e.what());
-    return e.errcode();
+    return e.error_code();
   }
   LOG_DEBUG_MSG(
       "created InfiniBand device for " << linkDevice->getDeviceName() << " using interface "
       << linkDevice->getInterfaceName());
 
-  _localAddr       = linkDevice->getAddress();
+  _localAddr       = linkDevice->get_address();
   _localAddrString = inet_ntoa(*(struct in_addr*)(&_localAddr));
   LOG_DEBUG_MSG("Device returns IP address " << _localAddrString.c_str());
 
@@ -126,7 +121,7 @@ int RdmaController::startup() {
     }
     //
     if (rank == 0) {
-      _rdmaListener = bgcios::RdmaServerPtr(new bgcios::RdmaServer(linkDevice->getAddress(), this->_port));
+      _rdmaListener = bgcios::RdmaServerPtr(new bgcios::RdmaServer(linkDevice->get_address(), this->_port));
       LOG_DEBUG_MSG("Writing port number to port-server.cfg");
       std::ofstream tempfile("/gpfs/bbp.cscs.ch/home/biddisco/tmp/port-server.cfg");
       tempfile << _rdmaListener->getLocalPort() << std::endl;
@@ -136,7 +131,7 @@ int RdmaController::startup() {
       std::ifstream tempfile("/gpfs/bbp.cscs.ch/home/biddisco/tmp/port-server.cfg");
       tempfile >> this->_port;
       LOG_DEBUG_MSG("SLURM_PROCID is " << rank << " reading port from file " << this->_port);
-      _rdmaListener = bgcios::RdmaServerPtr(new bgcios::RdmaServer(linkDevice->getAddress(), this->_port));
+      _rdmaListener = bgcios::RdmaServerPtr(new bgcios::RdmaServer(linkDevice->get_address(), this->_port));
     }
     if (_rdmaListener->getLocalPort() != this->_port) {
       this->_port = _rdmaListener->getLocalPort();
@@ -144,7 +139,7 @@ int RdmaController::startup() {
     }
   } catch (rdma_error& e) {
     LOG_ERROR_MSG("error creating listening RDMA connection: " << e.what());
-    return e.errcode();
+    return e.error_code();
   }
 
   LOG_DEBUG_MSG(
@@ -152,10 +147,10 @@ int RdmaController::startup() {
 
   // Create a protection domain object.
   try {
-    _protectionDomain = rdma_protection_domainPtr(new rdma_protection_domain(_rdmaListener->getContext()));
+    _protectionDomain = rdma_protection_domain_ptr(new rdma_protection_domain(_rdmaListener->getContext()));
   } catch (rdma_error& e) {
     LOG_ERROR_MSG("error allocating protection domain: " << e.what());
-    return e.errcode();
+    return e.error_code();
   }
   LOG_DEBUG_MSG("created protection domain " << _protectionDomain->getHandle());
 
@@ -164,12 +159,12 @@ int RdmaController::startup() {
     _completionChannel = RdmaCompletionChannelPtr(new RdmaCompletionChannel(_rdmaListener->getContext(), false));
   } catch (rdma_error& e) {
     LOG_ERROR_MSG("error constructing completion channel: " << e.what());
-    return e.errcode();
+    return e.error_code();
   }
 
   // Create a memory pool for pinned buffers
   _memoryPool = std::make_shared < rdma_memory_pool > (_protectionDomain,
-          RDMA_DEFAULT_MEMORY_POOL_SMALL_CHUNK_SIZE, RDMA_DEFAULT_CHUNKS_ALLOC, RDMA_MAX_CHUNKS_ALLOC);
+          RDMA_POOL_SMALL_CHUNK_SIZE, RDMA_DEFAULT_CHUNKS_ALLOC, RDMA_MAX_CHUNKS_ALLOC);
 
 #ifdef USE_SHARED_RECEIVE_QUEUE
   // create a shared receive queue
@@ -274,38 +269,38 @@ void RdmaController::eventChannelHandler(void)
         return;
     }
 
+    //
+    // Debugging code to get ip address of soure/dest of event
+    // NB: The src and dest fields refer to the message and not the connect request
+    // so we are actually receiving a request from dest (it is the src of the msg)
+    //
+    struct sockaddr *ip_src = &cm_event->id->route.addr.src_addr;
+    struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
+    //
+    struct sockaddr *ip_dst = &cm_event->id->route.addr.dst_addr;
+    struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
+
     // Handle the event : ack_event will deleted the event, do not use it afterwards.
     switch (cm_event->event) {
 
     case RDMA_CM_EVENT_CONNECT_REQUEST: {
-        LOG_DEBUG_MSG("RDMA_CM_EVENT_CONNECT_REQUEST");
+        LOG_DEVEL_MSG("RDMA_CM_EVENT_CONNECT_REQUEST     "
+            << ipaddress(addr_dst->sin_addr.s_addr) << "to "
+            << ipaddress(addr_src->sin_addr.s_addr)
+            << "( " << ipaddress(_localAddr) << ")");
         //
         // prevent two connections from taking place between the same endpoints
         //
         if (this->_connectRequestFunction) {
-            struct sockaddr *ip_src = &cm_event->id->route.addr.src_addr;
-            struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
-            //
-            struct sockaddr *ip_dst = &cm_event->id->route.addr.dst_addr;
-            struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
-            //
-            char ip1[4], ip2[4];
-            memcpy(ip1, &addr_dst->sin_addr, 4);
-            memcpy(ip2, &addr_src->sin_addr, 4);
-
-            //
-            // The src and dest fields refer to the message and not the connect request
-            // so we are actually receiving a request from dest (it is the src of the msg)
-            //
-            LOG_ERROR_MSG("Connection request, callback from "
+            LOG_DEVEL_MSG("Connection request, callback from "
                 << ipaddress(addr_dst->sin_addr.s_addr) << "to "
                 << ipaddress(addr_src->sin_addr.s_addr)
-                << "we are " << ipaddress(_localAddr));
+                << "( " << ipaddress(_localAddr) << ")");
             //
             if (!this->_connectRequestFunction(addr_dst, addr_src)) {
                 LOG_ERROR_MSG("Connect request callback rejected (already connecting?)");
                 // reject() does not wait or ack
-                _rdmaListener->reject(cm_event->id);
+                _rdmaListener->reject();
                 break;
             }
         }
@@ -355,7 +350,7 @@ void RdmaController::eventChannelHandler(void)
                 << rdma_error::error_string(err));
             _clients.erase(client->getQpNum());
             //      _completionChannel->removeCompletionQ(completionQ);
-            client->reject(cm_event->id);
+            client->reject();
             client.reset();
             completionQ.reset();
             break;
@@ -366,35 +361,30 @@ void RdmaController::eventChannelHandler(void)
     }
 
     case RDMA_CM_EVENT_ESTABLISHED: {
-        struct sockaddr *ip_src = &cm_event->id->route.addr.src_addr;
-        struct sockaddr_in *addr_src = reinterpret_cast<struct sockaddr_in *>(ip_src);
-        //
-        struct sockaddr *ip_dst = &cm_event->id->route.addr.dst_addr;
-        struct sockaddr_in *addr_dst = reinterpret_cast<struct sockaddr_in *>(ip_dst);
-        //
-        char ip1[4], ip2[4];
-        memcpy(ip1, &addr_dst->sin_addr, 4);
-        memcpy(ip2, &addr_src->sin_addr, 4);
-
-        LOG_ERROR_MSG("RDMA_CM_EVENT_ESTABLISHED         "
+        LOG_DEVEL_MSG("RDMA_CM_EVENT_ESTABLISHED         "
             << ipaddress(addr_dst->sin_addr.s_addr) << "to "
             << ipaddress(addr_src->sin_addr.s_addr)
-            << "we are " << ipaddress(_localAddr));
+            << "( " << ipaddress(_localAddr) << ")");
 
-        LOG_DEBUG_MSG("RDMA_CM_EVENT_ESTABLISHED");
         // Find connection associated with this event.
         RdmaClientPtr client = _clients[cm_event->id->qp->qp_num];
         LOG_INFO_MSG(client->getTag() << "connection established with "
             << client->getRemoteAddressString());
         if (this->_connectionFunction) {
-            LOG_ERROR_MSG("calling connection callback ");
+            LOG_DEVEL_MSG("calling connection callback from  "
+                << ipaddress(addr_dst->sin_addr.s_addr) << "to "
+                << ipaddress(addr_src->sin_addr.s_addr)
+                << "( " << ipaddress(_localAddr) << ")");
             this->_connectionFunction(std::make_pair(cm_event->id->qp->qp_num, 0), client);
         }
         break;
     }
 
     case RDMA_CM_EVENT_DISCONNECTED: {
-        LOG_DEBUG_MSG("RDMA_CM_EVENT_DISCONNECTED");
+        LOG_DEVEL_MSG("RDMA_CM_EVENT_DISCONNECTED        "
+            << ipaddress(addr_dst->sin_addr.s_addr) << "to "
+            << ipaddress(addr_src->sin_addr.s_addr)
+            << "( " << ipaddress(_localAddr) << ")");
         // Find connection associated with this event.
         RdmaClientPtr client = _clients[cm_event->id->qp->qp_num];
         RdmaCompletionQueuePtr completionQ = client->getCompletionQ();
@@ -466,7 +456,7 @@ bool RdmaController::completionChannelHandler(uint64_t requestId) { //, lock_typ
     }
 
     catch (const rdma_error& e) {
-        LOG_ERROR_MSG("error removing work completions from completion queue: " << rdma_error::error_string(e.errcode()));
+        LOG_ERROR_MSG("error removing work completions from completion queue: " << rdma_error::error_string(e.error_code()));
     }
 
     return true;
@@ -482,9 +472,10 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(
     std::string remoteAddr = inet_ntoa(*(struct in_addr*) (&remote_ip));
     std::string remotePort = boost::lexical_cast < std::string > (remote_port);
 
-    LOG_ERROR_MSG("makeServerToServerConnection from "
+    LOG_DEVEL_MSG("makeServerToServerConnection from "
         << ipaddress(_localAddr)
-        << "to " << ipaddress(remote_ip));
+        << "to " << ipaddress(remote_ip)
+        << "( " << ipaddress(_localAddr) << ")");
     RdmaCompletionQueuePtr completionQ;
     try {
         //    completionQ = std::make_shared < RdmaCompletionQueue >
@@ -516,6 +507,10 @@ RdmaClientPtr RdmaController::makeServerToServerConnection(
         return NULL;
     }
 
+    LOG_DEVEL_MSG("Inserting QP in clients_ map from "
+        << ipaddress(_localAddr)
+        << "to " << ipaddress(remote_ip)
+        << "( " << ipaddress(_localAddr) << ")");
     // Add new client to map of active clients.
     _clients.insert(std::pair<uint32_t, RdmaClientPtr>(newClient->getQpNum(), newClient));
 

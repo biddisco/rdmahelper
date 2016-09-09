@@ -37,8 +37,8 @@
 //! \brief Methods for bgcios::RdmaDevice class.
 
 // Includes
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
 #include <errno.h>
 #include <iostream>
@@ -102,7 +102,7 @@ RdmaDevice::RdmaDevice(std::string device, std::string interface)
    // Get the list of network interfaces.
    if (getifaddrs(&_interfaceList) != 0) {
       rdma_error e(errno, "getifaddrs() failed");
-      LOG_ERROR_MSG("error getting list of network interfaces: " << rdma_error::error_string(e.errcode()));
+      LOG_ERROR_MSG("error getting list of network interfaces: " << rdma_error::error_string(e.error_code()));
       throw e;
    }
 
@@ -186,7 +186,7 @@ RdmaDevice::getInterfaceName(void)
 
 //----------------------------------------------------------------------------
 in_addr_t
-RdmaDevice::getAddress(void)
+RdmaDevice::get_address(void)
 {
    // Just return if the interface was not found.
    if (_myInterface == NULL) {

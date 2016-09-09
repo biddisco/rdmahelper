@@ -26,9 +26,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 #------------------------------------------------------------------------------
 # Logging
 #------------------------------------------------------------------------------
-option(RDMAHELPER_WITH_LOGGING "Enable logging" ON)
-if (RDMAHELPER_WITH_LOGGING)
-  add_config_define(RDMA_HELPER_HAVE_LOGGING)
+option(HPX_PARCELPORT_VERBS_WITH_LOGGING "Enable logging" ON)
+if (HPX_PARCELPORT_VERBS_WITH_LOGGING)
+  add_config_define(HPX_PARCELPORT_VERBS_HAVE_LOGGING)
   if (NOT Boost_USE_STATIC_LIBS)
     add_config_define(BOOST_LOG_DYN_LINK)
   endif()
@@ -99,9 +99,6 @@ include_directories(
 # library sources
 #------------------------------------------------------------------------------
 set(RDMAHELPER_SRC
-    "src/rdma_memory_pool.cpp"
-    "src/rdma_memory_region.cpp"
-    "src/rdma_protection_domain.cpp"
     "src/RdmaDevice.cpp"
     "src/RdmaCompletionChannel.cpp"
     "src/RdmaCompletionQueue.cpp"

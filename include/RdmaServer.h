@@ -93,9 +93,9 @@ public:
 
      // Build scatter/gather element for inbound message.
      struct ibv_sge recv_sge;
-     recv_sge.addr   = (uint64_t)region->getAddress();
+     recv_sge.addr   = (uint64_t)region->get_address();
      recv_sge.length = length;
-     recv_sge.lkey   = region->getLocalKey();
+     recv_sge.lkey   = region->get_local_key();
 
      // Build receive work request.
      struct ibv_recv_wr recv_wr;
@@ -108,9 +108,13 @@ public:
      struct ibv_recv_wr *badRequest;
      int err = ibv_post_srq_recv(srq, &recv_wr, &badRequest);
      if (err!=0) {
-       throw(rdma_error(err, "postSendNoImmed SRQ failed"));
-     }
-     LOG_DEBUG_MSG(_tag.c_str() << "posting SRQ Recv wr_id " << hexpointer(recv_wr.wr_id) << " with Length " << hexlength(length) << " " << hexpointer(region->getAddress()));
+         LOG_ERROR_MSG("postRecvRegionAsID SRQ failed");
+         throw(std::runtime_error(std::string("postRecvRegionAsID SRQ failed")
+             + rdma_error::error_string(errno)));
+    }
+     LOG_DEBUG_MSG(_tag.c_str() << "posting SRQ Recv wr_id "
+         << hexpointer(recv_wr.wr_id) << " with Length " << hexlength(length)
+         << " " << hexpointer(region->get_address()));
      return recv_wr.wr_id;
    }
 };

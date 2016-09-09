@@ -41,10 +41,12 @@
 
 // Includes
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaConnection.h>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_pool.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_region.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_memory_pool.hpp>
 #include <memory>
 #include <queue>
+#include "../../rdma/memory_region.hpp"
+
+namespace verbs = hpx::parcelset::policies::verbs;
 
 namespace bgcios
 {
@@ -89,13 +91,12 @@ namespace bgcios
         //! \throws rdma_error.
 
         RdmaClient(struct rdma_cm_id *cmId,
-            rdma_protection_domainPtr domain,
+            verbs::rdma_protection_domain_ptr domain,
             RdmaCompletionQueuePtr completionQ,
-            rdma_memory_poolPtr pool,
+            rdma_memory_pool_ptr pool,
             RdmaSharedReceiveQueuePtr SRQ) :
             RdmaConnection(cmId, domain, completionQ, completionQ, SRQ)
         {
-            createRegions(domain);
             _completionQ = completionQ;
             _memoryPool = pool;
             _uniqueId = (uint64_t)-1;
@@ -113,7 +114,7 @@ namespace bgcios
         //! \param  completionQ Completion queue for both send and receive operations.
         //! \return 0 when successful, errno when unsuccessful.
 
-        int makePeer(rdma_protection_domainPtr domain, RdmaCompletionQueuePtr completionQ);
+        int makePeer(verbs::rdma_protection_domain_ptr domain, RdmaCompletionQueuePtr completionQ);
 
         //! \brief  Get completion queue used for both send and receive operations.
         //! \return Completion queue pointer.
@@ -131,24 +132,8 @@ namespace bgcios
 
     private:
 
-        //! \brief  Create memory regions for inbound and outbound messages.
-        //! \param  domain Protection domain for client.
-        //! \return Nothing.
-        //! \throws rdma_error.
-
-        void createRegions(rdma_protection_domainPtr domain);
-
         //! Memory region for inbound messages.
-        rdma_protection_domainPtr _domain;
-
-        //! Memory region for inbound messages.
-        rdma_memory_region_ptr _inMessageRegion;
-
-        //! Memory region for outbound messages.
-        rdma_memory_region_ptr _outMessageRegion;
-
-        //! Memory region for Auxilliary outbound messages.
-        rdma_memory_region_ptr _outMessageRegionAux;
+        verbs::rdma_protection_domain_ptr _domain;
 
         //! Completion queue.
         RdmaCompletionQueuePtr _completionQ;
@@ -161,7 +146,7 @@ namespace bgcios
         int _sizeBlock;
         bool  _usingBlocking;
 
-        //std::shared_ptr<pinned_pool> _pinned_memory_pool;
+        //std::shared_ptr<pinned_pool> _rdma_chunk_pool;
     };
 
     //! Smart pointer for RdmaClient object.

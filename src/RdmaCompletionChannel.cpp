@@ -37,8 +37,8 @@
 //! \brief Methods for bgcios::RdmaCompletionChannel class.
 
 // Includes
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_logging.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionChannel.h>
 //
 #include <errno.h>
@@ -111,7 +111,7 @@ RdmaCompletionChannel::setNonBlockMode(bool mode)
    if (rc != 0) {
       rdma_error e(errno, "fcntl() failed");
       LOG_ERROR_MSG("error changing completion channel with fd " << hexnumber(_completionChannel->fd) << " non-blocking mode using flags " <<
-                    std::hex << flags << ": " << rdma_error::error_string(e.errcode()));
+                    std::hex << flags << ": " << rdma_error::error_string(e.error_code()));
       throw e;
    }
 
@@ -152,7 +152,7 @@ RdmaCompletionChannel::waitForEvent(void)
    int rc = poll(&pollInfo, 1, -1); // Wait forever
    if (rc != 1) {
       rdma_error e(errno, "poll() failed");
-      LOG_ERROR_MSG("error polling completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.errcode()));
+      LOG_ERROR_MSG("error polling completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.error_code()));
       throw e;
    }
 
@@ -173,7 +173,7 @@ RdmaCompletionQueue *RdmaCompletionChannel::getEvent(void)
          return NULL;
       }
       rdma_error e(err, "ibv_get_cq_event() failed");
-      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.errcode()));
+      LOG_ERROR_MSG("error getting notification event from completion channel using fd " << hexnumber(_completionChannel->fd) << ": " << rdma_error::error_string(e.error_code()));
       throw e;
    }
 

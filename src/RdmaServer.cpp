@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -33,13 +33,13 @@
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
 
-//! \file  RdmaServer.cc 
+//! \file  RdmaServer.cc
 //! \brief Methods for bgcios::RdmaServer class.
 
 // Includes
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_logging.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaServer.h>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
 
 using namespace hpx::parcelset::policies::verbs;
 using namespace bgcios;
@@ -57,7 +57,7 @@ RdmaServer::RdmaServer(in_addr_t addr, in_port_t port) : RdmaConnection()
    int err = bind(addr, port);
    if (err != 0) {
       rdma_error e(err, "bind() failed");
-      LOG_ERROR_MSG(_tag << "error binding RdmaServer to port " << port << ": " << rdma_error::error_string(e.errcode()));
+      LOG_ERROR_MSG(_tag << "error binding RdmaServer to port " << port << ": " << rdma_error::error_string(e.error_code()));
       throw e;
    }
 

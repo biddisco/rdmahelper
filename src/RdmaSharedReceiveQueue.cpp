@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 //! \file  RdmaClient.h
@@ -16,9 +16,9 @@
 // Includes
 
 #include <iostream>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_logging.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_logging.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaSharedReceiveQueue.h>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_error.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
 #include <cstring>
 #include <rdma/rdma_verbs.h>
 
@@ -35,7 +35,6 @@
   };
 */
 
-using namespace hpx::parcelset::policies::verbs;
 namespace bgcios
 {
 
@@ -44,7 +43,7 @@ namespace bgcios
 #define VERBS_EP_RX_CNT         (4096)  // default SRQ size
 #define VERBS_EP_TX_CNT         (4096)  // default send count
 
-RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain)
+RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domain_ptr domain)
 {
   _domain = domain;
   _cmId   = cmId;
@@ -59,7 +58,7 @@ RdmaSharedReceiveQueue::RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_pro
 
   if (err != 0) {
      rdma_error e(errno, "rdma_create_srq() failed");
-     LOG_ERROR_MSG("error creating shared receive queue : " << rdma_error::error_string(e.errcode()));
+     LOG_ERROR_MSG("error creating shared receive queue : " << rdma_error::error_string(e.error_code()));
      throw e;
    }
   std::cout << "Here 2 with cmId " << _cmId << std::endl;
@@ -75,7 +74,7 @@ RdmaSharedReceiveQueue::~RdmaSharedReceiveQueue()
   rdma_destroy_srq(_cmId);
 
 //    rdma_error e(errno, "rdma_destroy_srq() failed");
-//    LOG_ERROR_MSG("error deleting shared receive queue : " << rdma_error::error_string(e.errcode()));
+//    LOG_ERROR_MSG("error deleting shared receive queue : " << rdma_error::error_string(e.error_code()));
 //    throw e;
 //  }
 }

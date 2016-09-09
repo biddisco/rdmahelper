@@ -24,9 +24,11 @@
 #define COMMON_RDMACONNECTION_BASE_H
 
 // Includes
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_memory_pool.hpp>
+#include <plugins/parcelport/verbs/rdma/rdma_memory_pool.hpp>
 #include <iomanip>
 #include <atomic>
+
+using namespace hpx::parcelset::policies::verbs;
 
 //! Base connection class for RDMA operations with a remote partner.
 namespace bgcios {
@@ -46,13 +48,13 @@ public:
 
     /*---------------------------------------------------------------------------*/
     void popReceive() const {
-        uint64_t temp = --_waitingReceives;
+        LOG_SETUP_VAR(uint64_t temp =) --_waitingReceives;
         LOG_DEBUG_MSG("After decrement size of waiting receives is " << decnumber(temp));
     }
 
     /*---------------------------------------------------------------------------*/
     void pushReceive() const {
-        uint64_t temp = ++_waitingReceives;
+        LOG_SETUP_VAR(uint64_t temp =) ++_waitingReceives;
         LOG_DEBUG_MSG("After increment size of waiting receives is " << decnumber(temp));
     }
 
@@ -66,10 +68,10 @@ public:
         while (this->getNumReceives()<preposts) {
             // if the pool has spare small blocks (just use 0 size) then
             // refill the queues, but don't wait, just abort if none are available
-            if (this->_memoryPool->canAllocateRegionUnsafe(0)) {
+            if (this->_memoryPool->can_allocate_unsafe(0)) {
                 LOG_DEBUG_MSG("Pre-Posting a receive to client size " << hexnumber(this->_memoryPool->small_.chunk_size_));
                 rdma_memory_region *region = this->getFreeRegion(this->_memoryPool->small_.chunk_size_);
-                this->postRecvRegionAsID(region, region->getLength(), false);
+                this->postRecvRegionAsID(region, region->get_size(), false);
             }
             else {
                 break; // don't block, if there are no free memory blocks
@@ -78,7 +80,7 @@ public:
     }
 
     /*---------------------------------------------------------------------------*/
-    void setMemoryPool(rdma_memory_poolPtr pool)
+    void setMemoryPool(rdma_memory_pool_ptr pool)
     {
         this->_memoryPool = pool;
     }
@@ -86,11 +88,11 @@ public:
     /*---------------------------------------------------------------------------*/
     rdma_memory_region *getFreeRegion(size_t size)
     {
-        rdma_memory_region* region = this->_memoryPool->allocateRegion(size);
+        rdma_memory_region* region = this->_memoryPool->allocate_region(size);
         if (!region) {
             LOG_ERROR_MSG("Error creating free memory region");
         }
-        region->setMessageLength(size);
+        region->set_message_length(size);
 
         return region;
     }
@@ -100,7 +102,7 @@ public:
     postRecvRegionAsID(rdma_memory_region *region, uint32_t length, bool expected=false) = 0;
 
 protected:
-    rdma_memory_poolPtr             _memoryPool;
+    rdma_memory_pool_ptr             _memoryPool;
     mutable std::atomic<uint64_t> _waitingReceives;
 
 };

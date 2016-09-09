@@ -3,11 +3,11 @@
 //
 // ================================================================
 // Portions of this code taken from IBM BlueGene-Q source
-// 
+//
 // This software is available to you under the
 // Eclipse Public License (EPL).
 //
-// Please refer to the file "eclipse-1.0.txt" 
+// Please refer to the file "eclipse-1.0.txt"
 // ================================================================
 //
 /* begin_generated_IBM_copyright_prolog                             */
@@ -42,7 +42,9 @@
 // Includes
 #include <rdma/rdma_cma.h>
 #include <infiniband/verbs.h>
-#include <plugins/parcelport/verbs/rdmahelper/include/rdma_protection_domain.hpp>
+#include <plugins/parcelport/verbs/rdma/protection_domain.hpp>
+
+using namespace hpx::parcelset::policies::verbs;
 
 namespace bgcios
 {
@@ -55,7 +57,7 @@ public:
 
    //! \brief  Default constructor.
 
-   RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domainPtr domain);
+   RdmaSharedReceiveQueue(struct rdma_cm_id *cmId, rdma_protection_domain_ptr domain);
 
    //! \brief  Default destructor.
 
@@ -71,7 +73,7 @@ public:
 private:
 
    //! Memory region for inbound messages.
-   rdma_protection_domainPtr  _domain;
+   rdma_protection_domain_ptr  _domain;
    struct ibv_srq_init_attr _srq_attr;
    struct rdma_cm_id       *_cmId;
 };
