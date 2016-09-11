@@ -48,13 +48,13 @@ public:
 
     /*---------------------------------------------------------------------------*/
     void popReceive() const {
-        LOG_SETUP_VAR(uint64_t temp =) --_waitingReceives;
+        LOG_EXCLUSIVE(uint64_t temp =) --_waitingReceives;
         LOG_DEBUG_MSG("After decrement size of waiting receives is " << decnumber(temp));
     }
 
     /*---------------------------------------------------------------------------*/
     void pushReceive() const {
-        LOG_SETUP_VAR(uint64_t temp =) ++_waitingReceives;
+        LOG_EXCLUSIVE(uint64_t temp =) ++_waitingReceives;
         LOG_DEBUG_MSG("After increment size of waiting receives is " << decnumber(temp));
     }
 
