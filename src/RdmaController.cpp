@@ -26,7 +26,7 @@
 
 #include <plugins/parcelport/verbs/rdma/rdma_error.hpp>
 #include <plugins/parcelport/verbs/rdma/event_channel.hpp>
-#include <plugins/parcelport/verbs/rdmahelper/include/RdmaDevice.h>
+#include <plugins/parcelport/verbs/rdma/rdma_device.hpp>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaCompletionQueue.h>
 #include <plugins/parcelport/verbs/rdmahelper/include/RdmaController.h>
 #include <plugins/parcelport/verbs/readers_writers_mutex.hpp>
@@ -87,17 +87,17 @@ RdmaController::~RdmaController() {
 /*---------------------------------------------------------------------------*/
 int RdmaController::startup() {
   // Find the address of the I/O link device.
-  RdmaDevicePtr linkDevice;
+  rdma_device_ptr linkDevice;
   try {
     LOG_DEBUG_MSG("creating InfiniBand device for " << _device << " using interface " << _interface);
-    linkDevice = RdmaDevicePtr(new RdmaDevice(_device, _interface));
+    linkDevice = rdma_device_ptr(new rdma_device(_device, _interface));
   } catch (rdma_error& e) {
     LOG_ERROR_MSG("error opening InfiniBand device: " << e.what());
     return e.error_code();
   }
   LOG_DEBUG_MSG(
-      "created InfiniBand device for " << linkDevice->getDeviceName() << " using interface "
-      << linkDevice->getInterfaceName());
+      "created InfiniBand device for " << linkDevice->get_device_name() << " using interface "
+      << linkDevice->get_interface_name());
 
   _localAddr       = linkDevice->get_address();
   _localAddrString = inet_ntoa(*(struct in_addr*)(&_localAddr));

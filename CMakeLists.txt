@@ -99,7 +99,6 @@ include_directories(
 # library sources
 #------------------------------------------------------------------------------
 set(RDMAHELPER_SRC
-    "src/RdmaDevice.cpp"
     "src/RdmaCompletionChannel.cpp"
     "src/RdmaCompletionQueue.cpp"
     "src/RdmaConnection.cpp"
